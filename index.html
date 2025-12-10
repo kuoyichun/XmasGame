@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎄 聖誕動物匿名交換禮物 Final</title>
+    <title>🎄 聖誕動物匿名交換禮物 Final+</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -22,7 +22,8 @@
     <audio id="sfx-drum" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
     <audio id="sfx-tada" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
 
-    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">↺ 重置</button>
+    <!-- 重置按鈕 (加密) -->
+    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
 
     <header class="text-center py-8 px-4 mt-4">
         <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 聖誕動物禮物交換</h1>
@@ -32,7 +33,7 @@
     <main class="max-w-md mx-auto px-4 relative">
         <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
-            <p class="text-white font-bold" id="loadingText">處理中...</p>
+            <p class="text-white font-bold" id="loadingText">同步資料中...</p>
         </div>
 
         <!-- 1. 登入 -->
@@ -50,10 +51,13 @@
             <button onclick="login()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg">確認身分</button>
         </div>
 
-        <!-- 1.5 真實姓名填寫 (簡化版) -->
+        <!-- 1.5 真實姓名填寫 -->
         <div id="profileSection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-blue-600 mb-8">
-            <h2 class="text-xl font-bold mb-2 text-center text-blue-800">📛 填寫真實姓名</h2>
-            <p class="text-sm text-gray-500 text-center mb-4">讓抽到你的人知道「這隻動物」究竟是誰！<br>(地址請另外公佈在群組)</p>
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
+                身分：<span class="userBadgeText"></span>
+            </div>
+            <h2 class="text-xl font-bold mb-2 text-center text-blue-800 mt-4">📛 填寫真實姓名</h2>
+            <p class="text-sm text-gray-500 text-center mb-4">讓抽到你的人知道是誰！<br>(地址請另外公佈在群組)</p>
             <div class="space-y-3">
                 <input type="text" id="inputName" placeholder="請輸入你的真實姓名" class="w-full p-4 border-2 border-blue-200 rounded-xl text-lg text-center font-bold">
                 <button onclick="submitProfile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg">確認儲存 & 下一步</button>
@@ -63,7 +67,7 @@
         <!-- 2. 抽籤區 -->
         <div id="lotterySection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-yellow-500 mb-8 relative">
             <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
-                身分：<span id="userBadge"></span>
+                身分：<span class="userBadgeText"></span>
             </div>
             <h2 class="text-xl font-bold mb-2 text-center text-yellow-800 mt-4">✨ 抽取禮物特徵 ✨</h2>
             <div id="lotteryIntro">
@@ -76,9 +80,12 @@
 
         <!-- 3. 已提交狀態 -->
         <div id="submittedState" class="hidden bg-green-100 text-green-900 rounded-xl p-6 shadow-lg border-2 border-green-500 mb-8 text-center relative">
-            <h3 class="text-2xl font-bold mb-2 mt-2">🎄 願望已掛上樹梢！</h3>
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
+                身分：<span class="userBadgeText"></span>
+            </div>
+            <h3 class="text-2xl font-bold mb-2 mt-4">🎄 願望已掛上樹梢！</h3>
             <p id="mySubmittedFeatures" class="font-bold text-lg text-red-600 my-3"></p>
-            <p class="text-sm">請等待其他人完成。</p>
+            <p class="text-sm text-gray-600">真實姓名：<span id="mySubmittedName" class="font-bold"></span></p>
         </div>
 
         <!-- 4. 許願牆 -->
@@ -106,7 +113,7 @@
     </main>
 
     <script>
-        // ⚠️ 請填入你的 GAS 網址 (如果剛才沒有重新部署產生新網址，則沿用舊的即可)
+        // ⚠️ 請填入你的 GAS 網址
         const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec'; 
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
@@ -123,38 +130,87 @@
         let finalSelection = [];
         let isDrawing = false;
         let globalProfiles = {}; 
+        let isDataLoaded = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (currentUser) {
-                if (localStorage.getItem('profileSubmitted') === 'true') {
-                     showLoggedInView();
-                } else {
-                     showProfileView(); 
-                }
-            } else {
-                showLoginView();
-            }
-            fetchData();
-            setInterval(fetchData, 3000);
+            fetchData(); // 立即同步
+            setInterval(fetchData, 3000); // 每3秒同步
         });
 
-        function showLoginView() {
-            document.getElementById('loginSection').classList.remove('hidden');
-            document.getElementById('profileSection').classList.add('hidden');
-            document.getElementById('lotterySection').classList.add('hidden');
-            document.getElementById('submittedState').classList.add('hidden');
-        }
-        
-        function showProfileView() {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('profileSection').classList.remove('hidden');
-            document.getElementById('lotterySection').classList.add('hidden');
+        // --- 核心：根據後端資料決定顯示哪個畫面 ---
+        function updateUIState(data) {
+            // 更新進度
+            document.getElementById('progressCount').innerText = data.submissionCount;
+            const pct = Math.min((data.submissionCount/5)*100, 100);
+            document.getElementById('progressBar').style.width = `${pct}%`;
+
+            // 更新個資庫
+            globalProfiles = data.profiles || {};
+
+            // 1. 如果沒登入 -> 顯示登入頁
+            if (!currentUser) {
+                showSection('loginSection');
+                return;
+            }
+
+            // 更新所有 Badge
+            document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
+
+            // 2. 檢查此使用者的狀態
+            const mySubmission = data.submissions[currentUser];
+            const myProfile = data.profiles[currentUser];
+
+            // 狀態 A: 已經完全提交 (有特徵) -> 顯示完成頁面
+            if (mySubmission) {
+                document.getElementById('mySubmittedFeatures').innerText = `${mySubmission[0]} ＋ ${mySubmission[1]}`;
+                document.getElementById('mySubmittedName').innerText = myProfile ? myProfile.name : "(資料同步中)";
+                showSection('submittedState');
+            } 
+            // 狀態 B: 有填姓名，但還沒抽特徵 -> 顯示抽籤頁
+            else if (myProfile) {
+                showSection('lotterySection');
+            } 
+            // 狀態 C: 什麼都沒填 -> 顯示填寫姓名頁
+            else {
+                showSection('profileSection');
+            }
+
+            // 3. 配對狀態控制
+            const pWaiting = document.getElementById('pairingWaiting');
+            const pAction = document.getElementById('pairingAction');
+            const pResult = document.getElementById('pairingResult');
+
+            if (data.isPaired) {
+                pWaiting.classList.add('hidden');
+                pAction.classList.add('hidden');
+                
+                // 只有當結果區是隱藏的，才執行一次「揭曉動畫」
+                if (pResult.classList.contains('hidden')) {
+                    playSfx('sfx-tada');
+                    confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+                    pResult.classList.remove('hidden');
+                }
+                // 每次都重新渲染內容，確保最新的名字會顯示出來
+                renderPairingResult(data.pairings);
+            } else if (data.submissionCount >= 5) {
+                pWaiting.classList.add('hidden');
+                pAction.classList.remove('hidden');
+                pResult.classList.add('hidden');
+            } else {
+                pWaiting.classList.remove('hidden');
+                pAction.classList.add('hidden');
+                pResult.classList.add('hidden');
+            }
         }
 
-        function showLoggedInView() {
-            document.getElementById('loginSection').classList.add('hidden');
-            document.getElementById('profileSection').classList.add('hidden');
-            document.getElementById('userBadge').innerText = ANIMAL_NAMES[currentUser];
+        function showSection(sectionId) {
+            // 隱藏所有主要區塊，只顯示指定的
+            const sections = ['loginSection', 'profileSection', 'lotterySection', 'submittedState'];
+            sections.forEach(id => {
+                const el = document.getElementById(id);
+                if (id === sectionId) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
         }
 
         function login() {
@@ -162,16 +218,23 @@
             if (!select.value) return alert('請選擇一個動物代號！');
             currentUser = select.value;
             localStorage.setItem('animalUser', currentUser);
-            showProfileView();
+            document.getElementById('loading').classList.remove('hidden');
+            fetchData(); // 立即觸發更新
         }
 
         function logout() {
-            if(confirm('重置身分？')) {
-                localStorage.clear();
-                location.reload();
+            const pwd = prompt("請輸入重置密碼：");
+            if (pwd === "mumu") {
+                if(confirm('密碼正確。確定要重置本機身分嗎？')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            } else if (pwd !== null) {
+                alert("密碼錯誤！");
             }
         }
 
+        // --- API 互動 ---
         function submitProfile() {
             const name = document.getElementById('inputName').value;
             if(!name) return alert('請填寫真實姓名！');
@@ -184,14 +247,121 @@
             })
             .then(res => res.json())
             .then(data => {
-                document.getElementById('loading').classList.add('hidden');
-                localStorage.setItem('profileSubmitted', 'true');
-                showLoggedInView();
-                document.getElementById('lotterySection').classList.remove('hidden');
+                fetchData(); // 提交後重新整理狀態
+            });
+        }
+
+        function submitFeatures() {
+            document.getElementById('loading').classList.remove('hidden');
+            fetch(API_URL, {
+                redirect: "follow", method: 'POST',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: 'submit_feature', nickname: currentUser, feature1: finalSelection[0], feature2: finalSelection[1] })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('許願成功！');
                 fetchData();
             });
         }
 
+        function generatePairing() {
+            if(!confirm("確定要進行最終配對嗎？")) return;
+            playSfx('sfx-drum');
+            document.getElementById('loading').classList.remove('hidden');
+            fetch(API_URL, { 
+                redirect: "follow", method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: 'generate_pair' }) 
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').classList.add('hidden');
+                if(data.status === 'success' || data.status === 'already_paired') fetchData();
+                else alert('配對失敗：' + data.message);
+            });
+        }
+
+        function fetchData() {
+            fetch(API_URL)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').classList.add('hidden');
+                renderWall(data.submissions);
+                updateUIState(data);
+            })
+            .catch(err => console.error(err));
+        }
+
+        // --- 渲染畫面 ---
+        function renderWall(submissions) {
+            const grid = document.getElementById('wallGrid');
+            grid.innerHTML = '';
+            ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'].forEach(engName => {
+                const zhName = ANIMAL_NAMES[engName];
+                const row = document.createElement('div');
+                row.className = "bg-slate-700 bg-opacity-50 rounded p-3 flex items-center justify-between border border-slate-600";
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.innerHTML = `<span class="${engName === currentUser ? 'text-yellow-400 font-bold' : 'text-slate-200'}">${zhName}</span>`;
+                const contentDiv = document.createElement('div');
+                contentDiv.className = "flex gap-2";
+
+                if (submissions[engName]) {
+                    contentDiv.innerHTML = `
+                        <span class="bg-red-600 text-white text-xs px-2 py-1 rounded shadow">${submissions[engName][0]}</span>
+                        <span class="bg-green-600 text-white text-xs px-2 py-1 rounded shadow">${submissions[engName][1]}</span>
+                    `;
+                } else {
+                    contentDiv.innerHTML = `<span class="text-slate-500 text-xs animate-pulse">思考中...</span>`;
+                }
+                row.appendChild(nameDiv);
+                row.appendChild(contentDiv);
+                grid.appendChild(row);
+            });
+        }
+
+        function renderPairingResult(pairings) {
+            const container = document.getElementById('pairingResult');
+            // 我們不清除 container，而是更新裡面的內容，或者每次重畫也沒關係，因為不會閃爍
+            container.innerHTML = '';
+
+            pairings.forEach((pair, index) => {
+                const isMyMission = (pair.from === currentUser);
+                const div = document.createElement('div');
+                div.className = `p-3 rounded border flex flex-col ${isMyMission ? 'bg-yellow-900 bg-opacity-60 border-yellow-500 transform scale-105 shadow-xl' : 'bg-black bg-opacity-40 border-slate-700 opacity-70'}`;
+                
+                const basicInfo = `
+                    <div class="flex items-center justify-between w-full">
+                        <div class="font-bold text-slate-300 w-5/12 text-right ${pair.from===currentUser?'text-yellow-300':''}">${ANIMAL_NAMES[pair.from]}</div>
+                        <div class="w-2/12 text-center text-red-500 text-xl">➜</div>
+                        <div class="font-bold text-slate-300 w-5/12 text-left ${pair.to===currentUser?'text-yellow-300':''}">${ANIMAL_NAMES[pair.to]}</div>
+                    </div>
+                `;
+                div.innerHTML = basicInfo;
+
+                // 🌟 只顯示名字 🌟
+                if (isMyMission) {
+                    const targetProfile = globalProfiles[pair.to];
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.className = "mt-3 pt-3 border-t border-yellow-500/30 text-left text-sm text-yellow-100";
+                    if(targetProfile && targetProfile.name) {
+                        detailsDiv.innerHTML = `
+                            <p class="font-bold text-yellow-400 mb-1">🎁 收禮人身分揭曉：</p>
+                            <p class="text-xl text-white font-bold">${targetProfile.name}</p>
+                        `;
+                    } else {
+                        detailsDiv.innerHTML = `<p class="text-red-400">⚠️ 對方尚未填寫姓名</p>`;
+                    }
+                    div.appendChild(detailsDiv);
+                }
+
+                div.style.animation = `fadeIn 0.5s forwards ${index * 0.2}s`;
+                container.appendChild(div);
+            });
+        }
+
+        // --- 抽籤邏輯 ---
         function playSfx(id) {
             const audio = document.getElementById(id);
             if(audio) { audio.currentTime = 0; audio.play().catch(e => {}); }
@@ -294,149 +464,6 @@
                 btn.disabled = true;
                 btn.className = "w-full mt-6 bg-gray-400 text-white font-bold py-3 rounded-lg cursor-not-allowed";
             }
-        }
-
-        function submitFeatures() {
-            document.getElementById('loading').classList.remove('hidden');
-            fetch(API_URL, {
-                redirect: "follow", method: 'POST',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'submit_feature', nickname: currentUser, feature1: finalSelection[0], feature2: finalSelection[1] })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('loading').classList.add('hidden');
-                alert('許願成功！');
-                fetchData();
-            });
-        }
-
-        function generatePairing() {
-            if(!confirm("確定要進行最終配對嗎？")) return;
-            playSfx('sfx-drum');
-            document.getElementById('loading').classList.remove('hidden');
-            fetch(API_URL, { 
-                redirect: "follow", method: 'POST', 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'generate_pair' }) 
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('loading').classList.add('hidden');
-                if(data.status === 'success' || data.status === 'already_paired') fetchData();
-                else alert('配對失敗：' + data.message);
-            });
-        }
-
-        function fetchData() {
-            fetch(API_URL)
-            .then(res => res.json())
-            .then(data => {
-                globalProfiles = data.profiles || {}; 
-                renderWall(data.submissions);
-                document.getElementById('progressCount').innerText = data.submissionCount;
-                
-                if (currentUser && data.submissions[currentUser]) {
-                    document.getElementById('lotterySection').classList.add('hidden');
-                    document.getElementById('submittedState').classList.remove('hidden');
-                    document.getElementById('mySubmittedFeatures').innerText = `${data.submissions[currentUser][0]} ＋ ${data.submissions[currentUser][1]}`;
-                }
-
-                const pWaiting = document.getElementById('pairingWaiting');
-                const pAction = document.getElementById('pairingAction');
-                const pResult = document.getElementById('pairingResult');
-                const pBar = document.getElementById('progressBar');
-                pBar.style.width = `${Math.min((data.submissionCount/5)*100, 100)}%`;
-
-                if (data.isPaired) {
-                    pWaiting.classList.add('hidden');
-                    pAction.classList.add('hidden');
-                    
-                    if (pResult.classList.contains('hidden')) {
-                        playSfx('sfx-tada');
-                        confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-                        renderPairingResult(data.pairings);
-                        pResult.classList.remove('hidden');
-                    }
-                } else if (data.submissionCount >= 5) {
-                    pWaiting.classList.add('hidden');
-                    pAction.classList.remove('hidden');
-                    pResult.classList.add('hidden');
-                } else {
-                    pWaiting.classList.remove('hidden');
-                    pAction.classList.add('hidden');
-                    pResult.classList.add('hidden');
-                }
-            })
-            .catch(err => console.error(err));
-        }
-
-        function renderWall(submissions) {
-            const grid = document.getElementById('wallGrid');
-            grid.innerHTML = '';
-            ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'].forEach(engName => {
-                const zhName = ANIMAL_NAMES[engName];
-                const row = document.createElement('div');
-                row.className = "bg-slate-700 bg-opacity-50 rounded p-3 flex items-center justify-between border border-slate-600";
-                
-                const nameDiv = document.createElement('div');
-                nameDiv.innerHTML = `<span class="${engName === currentUser ? 'text-yellow-400 font-bold' : 'text-slate-200'}">${zhName}</span>`;
-
-                const contentDiv = document.createElement('div');
-                contentDiv.className = "flex gap-2";
-
-                if (submissions[engName]) {
-                    contentDiv.innerHTML = `
-                        <span class="bg-red-600 text-white text-xs px-2 py-1 rounded shadow">${submissions[engName][0]}</span>
-                        <span class="bg-green-600 text-white text-xs px-2 py-1 rounded shadow">${submissions[engName][1]}</span>
-                    `;
-                } else {
-                    contentDiv.innerHTML = `<span class="text-slate-500 text-xs animate-pulse">思考中...</span>`;
-                }
-                row.appendChild(nameDiv);
-                row.appendChild(contentDiv);
-                grid.appendChild(row);
-            });
-        }
-
-        function renderPairingResult(pairings) {
-            const container = document.getElementById('pairingResult');
-            container.innerHTML = '';
-
-            pairings.forEach((pair, index) => {
-                const isMyMission = (pair.from === currentUser);
-                const div = document.createElement('div');
-                div.className = `p-3 rounded border flex flex-col ${isMyMission ? 'bg-yellow-900 bg-opacity-60 border-yellow-500 transform scale-105 shadow-xl' : 'bg-black bg-opacity-40 border-slate-700 opacity-70'}`;
-                
-                const basicInfo = `
-                    <div class="flex items-center justify-between w-full">
-                        <div class="font-bold text-slate-300 w-5/12 text-right ${pair.from===currentUser?'text-yellow-300':''}">${ANIMAL_NAMES[pair.from]}</div>
-                        <div class="w-2/12 text-center text-red-500 text-xl">➜</div>
-                        <div class="font-bold text-slate-300 w-5/12 text-left ${pair.to===currentUser?'text-yellow-300':''}">${ANIMAL_NAMES[pair.to]}</div>
-                    </div>
-                `;
-                div.innerHTML = basicInfo;
-
-                // 🌟 只顯示名字 🌟
-                if (isMyMission) {
-                    const targetProfile = globalProfiles[pair.to];
-                    const detailsDiv = document.createElement('div');
-                    detailsDiv.className = "mt-3 pt-3 border-t border-yellow-500/30 text-left text-sm text-yellow-100";
-                    if(targetProfile) {
-                        detailsDiv.innerHTML = `
-                            <p class="font-bold text-yellow-400 mb-1">🎁 收禮人身分揭曉：</p>
-                            <p class="text-xl text-white font-bold">${targetProfile.name}</p>
-                        `;
-                    } else {
-                        detailsDiv.innerHTML = `<p class="text-red-400">⚠️ 對方尚未填寫姓名</p>`;
-                    }
-                    div.appendChild(detailsDiv);
-                }
-
-                div.style.opacity = '0';
-                div.style.animation = `fadeIn 0.5s forwards ${index * 0.2}s`;
-                container.appendChild(div);
-            });
         }
     </script>
     <style>@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }</style>
