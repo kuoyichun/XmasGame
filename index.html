@@ -5,20 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎄 2025聖誕神秘交換禮物</title>
     
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    
-    <!-- 特效庫 -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
-    <!-- 強制定義 hidden 樣式，防止排版崩壞 -->
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; }
         .hidden { display: none !important; }
-        
         .snow-bg {
             background-color: #0f172a;
             background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
@@ -27,13 +20,16 @@
 </head>
 <body class="snow-bg min-h-screen text-slate-100 pb-20 relative">
 
-    <!-- 音效區 -->
-    <audio id="sfx-spin" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
-    <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
-    <audio id="sfx-drum" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
-    <audio id="sfx-tada" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+    <!-- 音效區 (更新為穩定連結) -->
+    <!-- 鼓聲 (抽角色) -->
+    <audio id="sfx-drum" src="https://cdn.pixabay.com/audio/2022/03/15/audio_2434698544.mp3" preload="auto"></audio>
+    <!-- 登場 (揭曉) -->
+    <audio id="sfx-win" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3" preload="auto"></audio>
+    <!-- 拉霸 (抽特徵) -->
+    <audio id="sfx-spin" src="https://cdn.pixabay.com/audio/2022/03/10/audio_c3e660e807.mp3" preload="auto"></audio>
+    <!-- 成功 (完成) -->
+    <audio id="sfx-tada" src="https://cdn.pixabay.com/audio/2022/03/10/audio_1138720521.mp3" preload="auto"></audio>
 
-    <!-- 重置按鈕 -->
     <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
 
     <header class="text-center py-8 px-4 mt-4">
@@ -42,7 +38,6 @@
     </header>
 
     <main class="max-w-md mx-auto px-4 relative">
-        <!-- Loading 遮罩 -->
         <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
             <p class="text-white font-bold" id="loadingText">處理中...</p>
@@ -55,21 +50,18 @@
             <div class="text-center py-4 relative z-10">
                 <div class="text-6xl mb-6">❓</div>
                 <p class="text-gray-500 mb-6 text-sm">點擊按鈕，從命運牌堆中<br>抽取一張專屬於你的動物卡牌。</p>
-                <button id="btnDrawRole" onclick="drawRole()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transform transition hover:scale-105 active:scale-95">
+                <button id="btnDrawRole" onclick="drawRole()" onmouseover="preloadAudio('sfx-drum')" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transform transition hover:scale-105 active:scale-95">
                     🎴 抽取我的角色
                 </button>
             </div>
         </div>
 
-        <!-- 0.5 角色揭曉動畫區 (預設隱藏) -->
+        <!-- 0.5 角色揭曉動畫區 -->
         <div id="roleRevealSection" class="hidden fixed inset-0 z-40 bg-slate-900 flex flex-col items-center justify-center text-center px-4">
             <h2 id="revealTitle" class="text-white text-2xl font-bold mb-4 animate-pulse">🎲 命運安排中...</h2>
             <p id="revealSubtitle" class="text-gray-300 mb-6">正在從牌堆抽出...</p>
-            
             <div id="revealCard" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl transform transition-all duration-500 w-64 h-80 flex flex-col items-center justify-center border-4 border-purple-400">
-                <div id="cardContent">
-                    <div class="text-6xl mb-4 animate-bounce">🃏</div>
-                </div>
+                <div id="cardContent"><div class="text-6xl mb-4 animate-bounce">🃏</div></div>
             </div>
             <button onclick="confirmRole()" class="mt-10 bg-yellow-500 hover:bg-yellow-600 text-white px-10 py-3 rounded-full font-bold shadow-lg hidden animate-bounce" id="enterGameBtn">
                 進入遊戲 ➜
@@ -97,7 +89,7 @@
             <h2 class="text-xl font-bold mb-2 text-center text-yellow-800 mt-4">✨ 抽取禮物特徵 ✨</h2>
             <div id="lotteryIntro">
                 <p class="text-sm text-center text-gray-500 mb-6">系統將從資料庫隨機抽出 3 個特徵。</p>
-                <button onclick="startDrawAnimation()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 rounded-xl shadow-lg text-lg">🎰 啟動拉霸機</button>
+                <button onmouseover="preloadAudio('sfx-spin')" onclick="startDrawAnimation()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 rounded-xl shadow-lg text-lg">🎰 啟動拉霸機</button>
             </div>
             <div id="cardsContainer" class="grid grid-cols-1 gap-3 hidden mt-4"></div>
             <button id="submitBtn" onclick="submitFeatures()" class="hidden w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-lg disabled:bg-gray-400">🎁 確認並送出願望</button>
@@ -113,7 +105,7 @@
             <p class="text-sm text-gray-600">真實姓名：<span id="mySubmittedName" class="font-bold"></span></p>
         </div>
 
-        <!-- 4. 許願牆 (預設隱藏，登入後才顯示) -->
+        <!-- 4. 許願牆 -->
         <div id="wallSection" class="hidden bg-slate-800 bg-opacity-90 backdrop-blur rounded-xl p-5 shadow-xl border border-slate-600 mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-yellow-400">📋 許願進度 (<span id="progressCount">0</span>/5)</h2>
@@ -146,11 +138,10 @@
         const FEATURE_DB = {
             shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心圖案的"],
             colors: ["紅色的", "金色的", "透明的", "黑色的", "綠色的", "霧面的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "感覺很養生的"],
+            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "感覺很養生的", "跟3C有關的"],
             states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的"]
         };
 
-        // --- 變數管理 ---
         let clientUUID = localStorage.getItem('clientUUID');
         if (!clientUUID) {
             clientUUID = 'user_' + Math.random().toString(36).substr(2, 9);
@@ -164,23 +155,34 @@
         let globalProfiles = {}; 
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 優化：直接判斷是否顯示抽卡
             if (!currentUser) {
                 showSection('drawRoleSection');
                 document.getElementById('wallSection').classList.add('hidden');
             }
-
             fetchData(); 
             setInterval(fetchData, 3000); 
         });
 
-        // --- 核心：根據後端資料決定顯示哪個畫面 ---
+        // --- 音效處理 (含預載) ---
+        function playSfx(id) {
+            const audio = document.getElementById(id);
+            if(audio) {
+                audio.volume = 0.5; // 音量減半
+                audio.currentTime = 0;
+                // 用 catch 防止瀏覽器阻擋報錯
+                audio.play().catch(e => console.log('Audio play failed:', e));
+            }
+        }
+        function preloadAudio(id) {
+            const audio = document.getElementById(id);
+            if(audio) audio.load();
+        }
+
         function updateUIState(data) {
             document.getElementById('progressCount').innerText = data.submissionCount;
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
-            // 靜默重置檢測
             if (currentUser && !data.myRole) {
                 console.log('Server reset detected. Silent sync.');
                 localStorage.removeItem('animalUser');
@@ -197,29 +199,22 @@
 
             globalProfiles = data.profiles || {};
 
-            // 如果還沒身分 -> 顯示抽卡
             if (!currentUser) {
                 showSection('drawRoleSection');
                 document.getElementById('wallSection').classList.add('hidden'); 
                 return;
             }
 
-            // 有身分 -> 更新 Badge 並顯示許願牆
+            document.getElementById('wallSection').classList.remove('hidden'); 
             document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
-            document.getElementById('wallSection').classList.remove('hidden');
 
             const mySubmission = data.submissions[currentUser];
             const myProfile = data.profiles[currentUser];
 
-            // 這裡只有在初始化載入時才執行，避免打斷使用者操作
-            // 我們會在各步驟按鈕點擊後，手動強制切換，達到「零延遲」效果
-            // 所以這裡的邏輯主要用於「重新整理」後的狀態恢復
-            
-            // 判斷目前顯示的區塊 ID
             const currentVisible = document.querySelector('main > div:not(.hidden):not(#loading):not(#roleRevealSection):not(#wallSection):not(#pairingSection)');
             const currentId = currentVisible ? currentVisible.id : '';
 
-            // 只有當使用者不在操作流程中，才由這裡接管畫面 (防止互相搶畫面)
+            // 只有當不在操作流程中，才由這裡接管畫面
             if (mySubmission && currentId !== 'submittedState') {
                 document.getElementById('mySubmittedFeatures').innerText = `${mySubmission[0]} ＋ ${mySubmission[1]}`;
                 document.getElementById('mySubmittedName').innerText = myProfile ? myProfile.name : "(資料同步中)";
@@ -232,7 +227,6 @@
                 showSection('profileSection');
             }
 
-            // 配對狀態
             const pWaiting = document.getElementById('pairingWaiting');
             const pAction = document.getElementById('pairingAction');
             const pResult = document.getElementById('pairingResult');
@@ -266,7 +260,6 @@
             btn.classList.add('opacity-50', 'cursor-not-allowed');
 
             const revealSec = document.getElementById('roleRevealSection');
-            const cardContent = document.getElementById('cardContent');
             revealSec.classList.remove('hidden');
             playSfx('sfx-drum'); 
 
@@ -320,17 +313,15 @@
                     <div class="text-6xl mb-4 animate-bounce">${zhName.split(' ')[1]}</div>
                     <div class="text-3xl font-bold text-indigo-600">${zhName.split(' ')[0]}</div>
                 `;
-                
                 document.getElementById('enterGameBtn').classList.remove('hidden');
-            }, 1000); 
+            }, 1500); 
         }
 
         function confirmRole() {
-            // 【優化】按下後直接關閉揭曉視窗，並馬上顯示填寫姓名區，不等待任何讀取
+            // 直接切換，不等待 API
             document.getElementById('roleRevealSection').classList.add('hidden');
             document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
             showSection('profileSection'); 
-            // 讓後端去同步，前端先行
             fetchData();
         }
 
@@ -369,14 +360,12 @@
             const name = document.getElementById('inputName').value;
             if(!name) return alert('請填寫真實姓名！');
 
-            // 【優化】UI 立即反應：按鈕顯示處理中
             const btn = document.getElementById('btnSubmitProfile');
             const originalText = btn.innerText;
             btn.innerText = "資料儲存中...";
             btn.disabled = true;
             btn.classList.add('opacity-50');
 
-            // 背景送出資料
             fetch(API_URL, {
                 redirect: "follow", method: 'POST',
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -384,11 +373,10 @@
             })
             .then(res => res.json())
             .then(data => {
-                // 【優化】成功後播放音效，並直接切換下一頁，不等待 fetchData
+                // 優化：直接切換，不等待
                 playSfx('sfx-win');
                 showSection('lotterySection');
                 
-                // 恢復按鈕狀態 (雖然已經換頁看不到了)
                 btn.innerText = originalText;
                 btn.disabled = false;
                 btn.classList.remove('opacity-50');
@@ -396,7 +384,6 @@
         }
 
         function submitFeatures() {
-            // UI 立即反應
             document.getElementById('loading').classList.remove('hidden');
             
             fetch(API_URL, {
@@ -406,10 +393,9 @@
             })
             .then(res => res.json())
             .then(data => {
-                // 【優化】成功後立即播放慶祝音效
                 document.getElementById('loading').classList.add('hidden');
                 playSfx('sfx-tada');
-                alert('許願成功！');
+                alert('許願成功！祝你聖誕快樂！');
                 fetchData();
             });
         }
@@ -506,11 +492,6 @@
                 div.style.animation = `fadeIn 0.5s forwards ${index * 0.2}s`;
                 container.appendChild(div);
             });
-        }
-
-        function playSfx(id) {
-            const audio = document.getElementById(id);
-            if(audio) { audio.currentTime = 0; audio.play().catch(e => {}); }
         }
 
         function startDrawAnimation() {
