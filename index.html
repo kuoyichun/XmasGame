@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 修改標題 -->
     <title>🎄 2025聖誕神秘交換禮物</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
@@ -27,7 +26,6 @@
     <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
 
     <header class="text-center py-8 px-4 mt-4">
-        <!-- 修改主標題 -->
         <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 2025聖誕神秘交換禮物</h1>
         <p class="text-slate-400 text-sm">湊滿 5 人 · 抽出特徵 · 公開配對</p>
     </header>
@@ -59,7 +57,6 @@
                 身分：<span class="userBadgeText"></span>
             </div>
             <h2 class="text-xl font-bold mb-2 text-center text-blue-800 mt-4">📛 填寫真實姓名</h2>
-            <!-- 修改說明文字 (移除了地址相關提示) -->
             <p class="text-sm text-gray-500 text-center mb-4">讓抽到你的人知道是誰！</p>
             
             <div class="space-y-3">
@@ -117,16 +114,17 @@
     </main>
 
     <script>
-        // ⚠️ 請填入你的 GAS 網址
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec'; 
+        // ⚠️ 請填入你的 GAS 網址 (維持你原本的)
+        const API_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'; 
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
         
+        // 2025 新版資料庫
         const FEATURE_DB = {
-            shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星形狀的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心形狀的"],
-            colors: ["紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的", "彩虹色的", "螢光色的", "木頭色的", "粉嫩色系的", "漸層色的", "純白色的", "五顏六色的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的"],
-            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "復古風格的", "滑溜溜的"]
+            shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心圖案的"],
+            colors: ["紅色的", "金色的", "透明的", "黑色的", "綠色的", "霧面的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
+            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "感覺很養生的"],
+            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的"]
         };
 
         let currentUser = localStorage.getItem('animalUser');
@@ -143,43 +141,35 @@
 
         // --- 核心：根據後端資料決定顯示哪個畫面 ---
         function updateUIState(data) {
-            // 更新進度
             document.getElementById('progressCount').innerText = data.submissionCount;
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
-            // 更新個資庫
             globalProfiles = data.profiles || {};
 
-            // 1. 如果沒登入 -> 顯示登入頁
             if (!currentUser) {
                 showSection('loginSection');
                 return;
             }
 
-            // 更新所有 Badge
             document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
 
-            // 2. 檢查此使用者的狀態
             const mySubmission = data.submissions[currentUser];
             const myProfile = data.profiles[currentUser];
 
-            // 狀態 A: 已經完全提交 (有特徵) -> 顯示完成頁面
             if (mySubmission) {
                 document.getElementById('mySubmittedFeatures').innerText = `${mySubmission[0]} ＋ ${mySubmission[1]}`;
                 document.getElementById('mySubmittedName').innerText = myProfile ? myProfile.name : "(資料同步中)";
                 showSection('submittedState');
             } 
-            // 狀態 B: 有填姓名，但還沒抽特徵 -> 顯示抽籤頁
             else if (myProfile) {
                 showSection('lotterySection');
             } 
-            // 狀態 C: 什麼都沒填 -> 顯示填寫姓名頁
             else {
                 showSection('profileSection');
             }
 
-            // 3. 配對狀態控制
+            // --- 配對狀態控制 (修復閃爍問題) ---
             const pWaiting = document.getElementById('pairingWaiting');
             const pAction = document.getElementById('pairingAction');
             const pResult = document.getElementById('pairingResult');
@@ -188,14 +178,15 @@
                 pWaiting.classList.add('hidden');
                 pAction.classList.add('hidden');
                 
-                // 只有當結果區是隱藏的，才執行一次「揭曉動畫」
+                // 修正：只有當配對結果區塊是「隱藏」狀態時，才執行渲染和動畫
+                // 這樣可以防止每 3 秒自動重畫一次導致的閃爍
                 if (pResult.classList.contains('hidden')) {
                     playSfx('sfx-tada');
                     confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
                     pResult.classList.remove('hidden');
+                    renderPairingResult(data.pairings); // 移到這裡面
                 }
-                // 每次都重新渲染內容，確保最新的名字會顯示出來
-                renderPairingResult(data.pairings);
+                
             } else if (data.submissionCount >= 5) {
                 pWaiting.classList.add('hidden');
                 pAction.classList.remove('hidden');
@@ -208,7 +199,6 @@
         }
 
         function showSection(sectionId) {
-            // 隱藏所有主要區塊，只顯示指定的
             const sections = ['loginSection', 'profileSection', 'lotterySection', 'submittedState'];
             sections.forEach(id => {
                 const el = document.getElementById(id);
@@ -223,7 +213,7 @@
             currentUser = select.value;
             localStorage.setItem('animalUser', currentUser);
             document.getElementById('loading').classList.remove('hidden');
-            fetchData(); // 立即觸發更新
+            fetchData(); 
         }
 
         function logout() {
@@ -238,7 +228,6 @@
             }
         }
 
-        // --- API 互動 ---
         function submitProfile() {
             const name = document.getElementById('inputName').value;
             if(!name) return alert('請填寫真實姓名！');
@@ -251,7 +240,7 @@
             })
             .then(res => res.json())
             .then(data => {
-                fetchData(); // 提交後重新整理狀態
+                fetchData(); 
             });
         }
 
@@ -297,7 +286,6 @@
             .catch(err => console.error(err));
         }
 
-        // --- 渲染畫面 ---
         function renderWall(submissions) {
             const grid = document.getElementById('wallGrid');
             grid.innerHTML = '';
@@ -327,7 +315,6 @@
 
         function renderPairingResult(pairings) {
             const container = document.getElementById('pairingResult');
-            // 我們不清除 container，而是更新裡面的內容，或者每次重畫也沒關係，因為不會閃爍
             container.innerHTML = '';
 
             pairings.forEach((pair, index) => {
@@ -344,7 +331,6 @@
                 `;
                 div.innerHTML = basicInfo;
 
-                // 🌟 只顯示名字 🌟
                 if (isMyMission) {
                     const targetProfile = globalProfiles[pair.to];
                     const detailsDiv = document.createElement('div');
@@ -365,7 +351,6 @@
             });
         }
 
-        // --- 抽籤邏輯 ---
         function playSfx(id) {
             const audio = document.getElementById(id);
             if(audio) { audio.currentTime = 0; audio.play().catch(e => {}); }
