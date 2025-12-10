@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎄 聖誕動物匿名交換禮物 2.0</title>
+    <title>🎄 聖誕動物匿名交換禮物 3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -13,11 +13,10 @@
             background-color: #0f172a;
             background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
         }
-        .animate-pulse-fast { animation: pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .gradient-text { background-clip: text; -webkit-background-clip: text; color: transparent; background-image: linear-gradient(to right, #fbbf24, #f59e0b); }
     </style>
 </head>
-<body class="snow-bg min-h-screen text-slate-100 pb-20">
+<body class="snow-bg min-h-screen text-slate-100 pb-20 relative">
 
     <!-- 音效資源 -->
     <audio id="sfx-spin" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
@@ -25,7 +24,12 @@
     <audio id="sfx-drum" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
     <audio id="sfx-tada" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
 
-    <header class="text-center py-8 px-4">
+    <!-- 重置按鈕 (測試用/切換身分用) -->
+    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">
+        ↺ 重置身分
+    </button>
+
+    <header class="text-center py-8 px-4 mt-4">
         <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 聖誕動物禮物交換</h1>
         <p class="text-slate-400 text-sm">湊滿 5 人 · 抽出特徵 · 公開配對</p>
     </header>
@@ -35,31 +39,43 @@
         <!-- Loading Overlay -->
         <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
-            <p class="text-white font-bold" id="loadingText">載入中...</p>
+            <p class="text-white font-bold" id="loadingText">連線中...</p>
         </div>
 
-        <!-- 1. 登入 -->
-        <div id="loginSection" class="bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-green-700 mb-8">
-            <h2 class="text-xl font-bold mb-4 text-center">你是哪隻動物？ 🐾</h2>
-            <select id="animalSelect" class="w-full p-3 border rounded-lg mb-4 bg-slate-50 text-lg">
-                <option value="" disabled selected>請選擇你的代號</option>
-                <option value="Penguin">企鵝 🐧</option>
-                <option value="Alpaca">羊駝 🦙</option>
-                <option value="Sloth">樹懶 🦥</option>
-                <option value="Owl">貓頭鷹 🦉</option>
-                <option value="Sea Otter">海獺 🦦</option>
-            </select>
-            <button onclick="login()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95">
-                進入遊戲
-            </button>
+        <!-- 1. 登入區 (預設顯示) -->
+        <div id="loginSection" class="bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-green-700 mb-8 transform transition-all duration-500">
+            <h2 class="text-xl font-bold mb-2 text-center text-green-800">你是哪隻動物？ 🐾</h2>
+            <p class="text-sm text-gray-500 text-center mb-4">請誠實選擇你的代號，勿冒用他人身分</p>
+            
+            <div class="space-y-3">
+                <select id="animalSelect" class="w-full p-4 border-2 border-green-200 rounded-xl mb-4 bg-green-50 text-lg font-bold text-green-900 focus:outline-none focus:border-green-500">
+                    <option value="" disabled selected>👇 點擊選擇你的代號</option>
+                    <option value="Penguin">Penguin (企鵝 🐧)</option>
+                    <option value="Alpaca">Alpaca (羊駝 🦙)</option>
+                    <option value="Sloth">Sloth (樹懶 🦥)</option>
+                    <option value="Owl">Owl (貓頭鷹 🦉)</option>
+                    <option value="Sea Otter">Sea Otter (海獺 🦦)</option>
+                </select>
+                
+                <button onclick="login()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform active:scale-95 text-lg">
+                    確認身分並進入
+                </button>
+            </div>
         </div>
 
-        <!-- 2. 抽籤區 -->
+        <!-- 2. 抽籤區 (登入後顯示) -->
         <div id="lotterySection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-yellow-500 mb-8 relative">
-            <h2 class="text-xl font-bold mb-2 text-center text-green-800">✨ 抽取禮物特徵 ✨</h2>
+            
+            <!-- 顯示當前登入者 -->
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
+                目前身分：<span id="userBadge"></span>
+            </div>
+
+            <h2 class="text-xl font-bold mb-2 text-center text-yellow-800 mt-4">✨ 抽取禮物特徵 ✨</h2>
+            
             <div id="lotteryIntro">
-                <p class="text-sm text-center text-gray-500 mb-6">點擊按鈕，系統將隨機亂數產生 3 個特徵。</p>
-                <button onclick="startDrawAnimation()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transition transform hover:scale-105">
+                <p class="text-sm text-center text-gray-500 mb-6">點擊按鈕，系統將從 50+ 種特徵中<br>隨機抽出 3 個。</p>
+                <button onclick="startDrawAnimation()" class="w-full bg-gradient-to-b from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transition transform hover:scale-105 border-b-4 border-yellow-800">
                     🎰 啟動拉霸機
                 </button>
             </div>
@@ -73,8 +89,11 @@
         </div>
 
         <!-- 3. 已提交狀態 -->
-        <div id="submittedState" class="hidden bg-green-100 text-green-900 rounded-xl p-6 shadow-lg border-2 border-green-500 mb-8 text-center">
-            <h3 class="text-2xl font-bold mb-2">🎄 願望已掛上樹梢！</h3>
+        <div id="submittedState" class="hidden bg-green-100 text-green-900 rounded-xl p-6 shadow-lg border-2 border-green-500 mb-8 text-center relative">
+             <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
+                目前身分：<span id="submittedUserBadge"></span>
+            </div>
+            <h3 class="text-2xl font-bold mb-2 mt-2">🎄 願望已掛上樹梢！</h3>
             <p id="mySubmittedFeatures" class="font-bold text-lg text-red-600 my-3"></p>
             <p class="text-sm">請等待其他人完成，再進行配對。</p>
         </div>
@@ -92,7 +111,6 @@
         <div id="pairingSection" class="bg-red-900 bg-opacity-90 backdrop-blur rounded-xl p-6 shadow-2xl border-2 border-red-500 text-center">
             <h2 class="text-2xl font-bold text-white mb-4">🔗 最終配對</h2>
             
-            <!-- 狀態 A: 等待中 -->
             <div id="pairingWaiting" class="py-4">
                 <p class="text-red-200 mb-2">等待所有人提交特徵後開啟...</p>
                 <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
@@ -100,7 +118,6 @@
                 </div>
             </div>
 
-            <!-- 狀態 B: 按鈕 (只有湊滿5人出現) -->
             <div id="pairingAction" class="hidden py-4">
                 <p class="text-yellow-300 font-bold mb-4 text-lg animate-bounce">所有人都準備好了！</p>
                 <button onclick="generatePairing()" class="w-full bg-gradient-to-r from-yellow-500 to-red-600 text-white font-bold py-4 rounded-xl shadow-xl text-xl transition transform hover:scale-105 active:scale-95">
@@ -108,9 +125,8 @@
                 </button>
             </div>
 
-            <!-- 狀態 C: 結果展示 -->
             <div id="pairingResult" class="hidden space-y-3 text-left mt-4">
-                <!-- 配對結果將插入此處 -->
+                <!-- 配對結果 -->
             </div>
         </div>
 
@@ -118,8 +134,8 @@
 
     <script>
         // ============================================
-        // ⚠️ 請在此填入你的 GAS 網址
-        const API_URL = 'https://script.google.com/macros/library/d/1Ersx4jmwz63dxhp0n-bYwYlaVtsoFZbnjIYD11O-ZiVj4ARXdptNY7HO/2';
+        // ⚠️ 請填寫正確的 GAS URL (不需要重新部署 GAS，只要換前端即可)
+        const API_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'; 
         // ============================================
 
         const ANIMAL_NAMES = {
@@ -130,11 +146,24 @@
             'Sea Otter': '海獺 🦦'
         };
 
+        // 擴充後的特徵資料庫 (共 52 個)
         const FEATURE_DB = {
-            shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的"],
-            colors: ["紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的"],
-            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的"]
+            shapes: [
+                "長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的",
+                "三角形的", "星星形狀的", "動物造型的", "扁平的", "中空的", "巨大的", "迷你的", "愛心形狀的"
+            ],
+            colors: [
+                "紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的",
+                "彩虹色的", "螢光色的", "木頭色的", "粉嫩色系的", "漸層色的", "純白色的", "五顏六色的"
+            ],
+            functions: [
+                "可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的",
+                "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的"
+            ],
+            states: [
+                "香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的",
+                "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "復古風格的", "滑溜溜的"
+            ]
         };
 
         let currentUser = localStorage.getItem('animalUser');
@@ -146,37 +175,63 @@
         // --- 初始化 ---
         document.addEventListener('DOMContentLoaded', () => {
             if (currentUser) {
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('lotterySection').classList.remove('hidden');
-                document.getElementById('animalSelect').value = currentUser; // 恢復選項
+                showLoggedInView();
+            } else {
+                showLoginView();
             }
             
-            fetchData(); // 立即抓取一次
-            // 啟動自動同步 (每3秒)
+            fetchData(); 
             globalInterval = setInterval(fetchData, 3000);
         });
+
+        function showLoginView() {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('lotterySection').classList.add('hidden');
+            document.getElementById('submittedState').classList.add('hidden');
+        }
+
+        function showLoggedInView() {
+            document.getElementById('loginSection').classList.add('hidden');
+            // 更新 Badge
+            const zhName = ANIMAL_NAMES[currentUser];
+            document.getElementById('userBadge').innerText = zhName;
+            document.getElementById('submittedUserBadge').innerText = zhName;
+        }
 
         // --- 登入 ---
         function login() {
             const select = document.getElementById('animalSelect');
             if (!select.value) return alert('請選擇一個動物代號！');
+            
             currentUser = select.value;
             localStorage.setItem('animalUser', currentUser);
-            document.getElementById('loginSection').classList.add('hidden');
+            
+            showLoggedInView();
+            
+            // 登入後預設顯示抽籤區 (若已提交，fetchData 會自動切換到 submittedState)
             document.getElementById('lotterySection').classList.remove('hidden');
             fetchData();
         }
 
-        // --- 音效播放 helper ---
+        // --- 登出 (重置) ---
+        function logout() {
+            if(confirm('確定要重置身分嗎？(這不會刪除已送出的願望，只是清除瀏覽器紀錄)')) {
+                localStorage.removeItem('animalUser');
+                currentUser = null;
+                location.reload();
+            }
+        }
+
+        // --- 音效 helper ---
         function playSfx(id) {
             const audio = document.getElementById(id);
             if(audio) {
                 audio.currentTime = 0;
-                audio.play().catch(e => console.log('Audio play failed (interaction needed)'));
+                audio.play().catch(e => console.log('Audio play failed'));
             }
         }
 
-        // --- 抽籤動畫 (老虎機效果) ---
+        // --- 抽籤動畫 ---
         function startDrawAnimation() {
             if (isDrawing) return;
             isDrawing = true;
@@ -190,18 +245,16 @@
             myFeatures = finalDraw;
             finalSelection = [...finalDraw];
 
-            // 建立 3 個卡片插槽
             const container = document.getElementById('cardsContainer');
             container.innerHTML = '';
             for(let i=0; i<3; i++) {
                 const card = document.createElement('div');
                 card.id = `slot-${i}`;
                 card.className = "bg-gray-100 p-4 rounded-lg border-2 border-gray-300 text-center font-bold text-gray-400 text-xl";
-                card.innerText = "...";
+                card.innerText = "???";
                 container.appendChild(card);
             }
 
-            // 執行動畫
             let steps = 0;
             const maxSteps = 20;
             const interval = setInterval(() => {
@@ -221,11 +274,9 @@
         function revealFinalCards() {
             playSfx('sfx-win');
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-
-            renderCards(); // 顯示真正的卡片與刪除按鈕
+            renderCards();
             document.getElementById('submitBtn').classList.remove('hidden');
             
-            // 指示文字
             const tip = document.createElement('p');
             tip.className = "text-center text-red-600 font-bold mt-2 animate-bounce";
             tip.innerText = "👇 請點擊「刪除」去掉 1 個特徵";
@@ -234,12 +285,11 @@
 
         function renderCards() {
             const container = document.getElementById('cardsContainer');
-            // 保留 Tip，清空卡片
             const tip = container.querySelector('p');
             container.innerHTML = '';
             if(tip) container.appendChild(tip);
 
-            myFeatures.forEach((feature, idx) => {
+            myFeatures.forEach((feature) => {
                 const isDeleted = !finalSelection.includes(feature);
                 const card = document.createElement('div');
                 card.className = `p-4 rounded-lg border-2 flex justify-between items-center transition duration-300 ${isDeleted ? 'bg-gray-200 border-gray-300 opacity-60' : 'bg-red-50 border-red-300 scale-100'}`;
@@ -298,15 +348,14 @@
             .then(data => {
                 document.getElementById('loading').classList.add('hidden');
                 alert('許願成功！');
-                fetchData(); // 立即更新
+                fetchData();
             });
         }
 
-        // --- 配對邏輯 ---
         function generatePairing() {
             if(!confirm("確定要進行最終配對嗎？這將公開給所有人看！")) return;
             
-            playSfx('sfx-drum'); // 播放鼓聲
+            playSfx('sfx-drum');
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('loadingText').innerText = "正在命運配對中...";
 
@@ -318,8 +367,6 @@
             .then(data => {
                 document.getElementById('loading').classList.add('hidden');
                 if(data.status === 'success' || data.status === 'already_paired') {
-                    // 不需要手動 render，等待下一次 polling (3秒內) 自動顯示結果
-                    // 但為了體驗，我們可以立即呼叫 fetchData
                     fetchData();
                 } else {
                     alert('配對失敗：' + data.status);
@@ -327,16 +374,15 @@
             });
         }
 
-        // --- 核心：資料讀取與同步 ---
+        // --- 資料讀取 ---
         function fetchData() {
             fetch(API_URL)
             .then(res => res.json())
             .then(data => {
-                // 1. 更新許願牆
                 renderWall(data.submissions);
                 document.getElementById('progressCount').innerText = data.submissionCount;
                 
-                // 2. 更新使用者狀態
+                // 邏輯判斷：如果已登入且已提交資料 -> 顯示「已提交」
                 if (currentUser && data.submissions[currentUser]) {
                     document.getElementById('lotterySection').classList.add('hidden');
                     document.getElementById('submittedState').classList.remove('hidden');
@@ -344,37 +390,29 @@
                         `${data.submissions[currentUser][0]} ＋ ${data.submissions[currentUser][1]}`;
                 }
 
-                // 3. 更新配對區塊狀態
-                const pairingSec = document.getElementById('pairingSection');
+                // 配對狀態更新
                 const pWaiting = document.getElementById('pairingWaiting');
                 const pAction = document.getElementById('pairingAction');
                 const pResult = document.getElementById('pairingResult');
                 const pBar = document.getElementById('progressBar');
 
-                // 進度條動畫
                 const pct = (data.submissionCount / 5) * 100;
                 pBar.style.width = `${pct}%`;
 
                 if (data.isPaired) {
-                    // 已配對：顯示結果
                     pWaiting.classList.add('hidden');
                     pAction.classList.add('hidden');
-                    
                     if (pResult.classList.contains('hidden')) {
-                        // 這是第一次偵測到配對成功 -> 播放慶祝特效
                         playSfx('sfx-tada');
                         confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
                     }
                     pResult.classList.remove('hidden');
                     renderPairingResult(data.pairings);
-                    
                 } else if (data.canPair) {
-                    // 可配對但尚未配對：顯示按鈕
                     pWaiting.classList.add('hidden');
                     pAction.classList.remove('hidden');
                     pResult.classList.add('hidden');
                 } else {
-                    // 等待中
                     pWaiting.classList.remove('hidden');
                     pAction.classList.add('hidden');
                     pResult.classList.add('hidden');
@@ -386,8 +424,6 @@
         function renderWall(submissions) {
             const grid = document.getElementById('wallGrid');
             grid.innerHTML = '';
-            
-            // 固定順序顯示，方便查看
             const fixedOrder = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
 
             fixedOrder.forEach(engName => {
@@ -396,7 +432,6 @@
                 row.className = "bg-slate-700 bg-opacity-50 rounded p-3 flex items-center justify-between border border-slate-600";
                 
                 const isMe = (engName === currentUser);
-                
                 const nameDiv = document.createElement('div');
                 nameDiv.innerHTML = `<span class="${isMe ? 'text-yellow-400 font-bold' : 'text-slate-200'}">${zhName}</span>`;
 
@@ -415,7 +450,6 @@
                 } else {
                     contentDiv.innerHTML = `<span class="text-slate-500 text-xs animate-pulse">思考中...</span>`;
                 }
-
                 row.appendChild(nameDiv);
                 row.appendChild(contentDiv);
                 grid.appendChild(row);
@@ -427,17 +461,13 @@
             container.innerHTML = '';
 
             pairings.forEach((pair, index) => {
-                const div = document.createElement('div');
-                // 特殊樣式：如果是自己相關的
                 const isMyMission = (pair.from === currentUser);
-                const isGiftForMe = (pair.to === currentUser);
-
                 let bgClass = "bg-black bg-opacity-40 border-slate-700";
                 if(isMyMission) bgClass = "bg-yellow-900 bg-opacity-60 border-yellow-500 transform scale-105";
 
+                const div = document.createElement('div');
                 div.className = `p-3 rounded border flex items-center justify-between ${bgClass}`;
                 
-                // 中文名稱轉換
                 const fromName = ANIMAL_NAMES[pair.from];
                 const toName = ANIMAL_NAMES[pair.to];
 
@@ -447,21 +477,20 @@
                     <div class="font-bold text-slate-300 w-5/12 text-left ${pair.to===currentUser?'text-yellow-300':''}">${toName}</div>
                 `;
 
-                // 逐個顯示的動畫效果
                 div.style.opacity = '0';
-                div.style.animation = `fadeIn 0.5s forwards ${index * 0.3}s`; // 延遲顯示
-                
+                div.style.animation = `fadeIn 0.5s forwards ${index * 0.3}s`;
                 container.appendChild(div);
             });
             
-            // 如果我是送禮者，下方加註
-            const myTarget = pairings.find(p => p.from === currentUser);
-            if(myTarget) {
-                const targetName = ANIMAL_NAMES[myTarget.to];
-                const msg = document.createElement('div');
-                msg.className = "mt-4 bg-yellow-100 text-yellow-800 p-3 rounded font-bold text-center animate-bounce";
-                msg.innerHTML = `🎯 你的任務：買禮物給 <span class="text-red-600 text-xl">${targetName}</span>！`;
-                container.appendChild(msg);
+            if (currentUser) {
+                const myTarget = pairings.find(p => p.from === currentUser);
+                if(myTarget) {
+                    const targetName = ANIMAL_NAMES[myTarget.to];
+                    const msg = document.createElement('div');
+                    msg.className = "mt-4 bg-yellow-100 text-yellow-800 p-3 rounded font-bold text-center animate-bounce";
+                    msg.innerHTML = `🎯 你的任務：買禮物給 <span class="text-red-600 text-xl">${targetName}</span>！`;
+                    container.appendChild(msg);
+                }
             }
         }
     </script>
