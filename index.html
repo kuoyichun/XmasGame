@@ -429,13 +429,15 @@
                     pWaiting.classList.add('hidden');
                     pAction.classList.add('hidden');
                     
-                    // 只在第一次切換到顯示時播放特效
+                    // 修正關鍵：只有在「原本是隱藏狀態」時（剛載入網頁 或 剛按下配對），才執行渲染與動畫
                     if (pResult.classList.contains('hidden')) {
                         playSfx('sfx-tada');
                         confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+                        
+                        renderPairingResult(data.pairings); // 產生內容 (只做這一次)
+                        pResult.classList.remove('hidden'); // 顯示出來
                     }
-                    pResult.classList.remove('hidden');
-                    renderPairingResult(data.pairings);
+                    // 如果已經是顯示狀態 (classList 沒有 hidden)，就什麼都不做，保持畫面靜止
                     
                 } else if (data.submissionCount >= 5) {
                     // 階段 B: 人數已滿，等待某人按下按鈕
@@ -449,6 +451,8 @@
                     pAction.classList.add('hidden');
                     pResult.classList.add('hidden'); // 確保結果是隱藏的
                 }
+                
+                // ... (後面省略) ...
             })
             .catch(err => console.error('Error:', err));
         }
