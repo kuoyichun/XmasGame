@@ -110,8 +110,8 @@
             <p class="text-sm text-gray-600">真實姓名：<span id="mySubmittedName" class="font-bold"></span></p>
         </div>
 
-        <!-- 4. 許願牆 -->
-        <div id="wallSection" class="bg-slate-800 bg-opacity-90 backdrop-blur rounded-xl p-5 shadow-xl border border-slate-600 mb-8">
+        <!-- 4. 許願牆 (預設隱藏，登入後才顯示) -->
+        <div id="wallSection" class="hidden bg-slate-800 bg-opacity-90 backdrop-blur rounded-xl p-5 shadow-xl border border-slate-600 mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-yellow-400">📋 許願進度 (<span id="progressCount">0</span>/5)</h2>
                 <div class="animate-pulse h-2 w-2 bg-green-500 rounded-full"></div>
@@ -140,16 +140,15 @@
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
         
-        // 特徵資料庫 (使用您提供的版本)
+        // 特徵資料庫 (使用最新版本)
         const FEATURE_DB = {
             shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心圖案的"],
             colors: ["紅色的", "金色的", "透明的", "黑色的", "綠色的", "霧面的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "感覺很養生的"],
-            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的"]
+            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "跟3C有關的"],
+            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的", "感覺很養生的"]
         };
 
         // --- 變數管理 ---
-        // 生成或讀取 UUID (用來識別這個瀏覽器，取代手動登入)
         let clientUUID = localStorage.getItem('clientUUID');
         if (!clientUUID) {
             clientUUID = 'user_' + Math.random().toString(36).substr(2, 9);
@@ -173,7 +172,6 @@
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
-            // 檢查是否收到角色分配 (且本地尚未紀錄) - 防止換裝置登入後迷路
             if (!currentUser && data.myRole) {
                 currentUser = data.myRole;
                 localStorage.setItem('animalUser', currentUser);
@@ -181,13 +179,16 @@
 
             globalProfiles = data.profiles || {};
 
-            // 1. 如果還沒有角色 -> 顯示抽卡區
+            // 1. 如果還沒有角色 -> 顯示抽卡區，並隱藏許願牆 (保持神秘)
             if (!currentUser) {
                 showSection('drawRoleSection');
+                document.getElementById('wallSection').classList.add('hidden'); // 確保牆是隱藏的
                 return;
             }
 
-            // 2. 如果已經有角色，顯示對應流程
+            // 2. 如果已經有角色，顯示對應流程，並顯示許願牆
+            document.getElementById('wallSection').classList.remove('hidden'); // 顯示牆
+            
             document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
 
             const mySubmission = data.submissions[currentUser];
@@ -236,7 +237,6 @@
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('loadingText').innerText = "命運抽取中...";
             
-            // 呼叫後端抽牌
             fetch(API_URL, {
                 redirect: "follow", method: 'POST',
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -299,13 +299,34 @@
             });
         }
 
+        // --- 開發者測試用重置與選角 ---
         function logout() {
-            const pwd = prompt("請輸入重置密碼：");
+            const pwd = prompt("【開發者模式】\n請輸入密碼來重置身分：");
+            
             if (pwd === "mumu") {
-                if(confirm('密碼正確。確定要重置本機身分嗎？\n(注意：若您已抽取過角色，伺服器仍會記得您的 UUID，重置後會再次載入相同角色)')) {
-                    localStorage.clear();
-                    location.reload();
+                // 1. 清除舊資料
+                localStorage.clear();
+                
+                // 2. 讓開發者指定角色
+                const devRole = prompt("密碼正確！\n請輸入你想扮演的角色代號 (直接進入該角色)：\n\n選項：Penguin, Alpaca, Sloth, Owl, Sea Otter\n\n(若留空則為完全重置，回到抽卡畫面)");
+                
+                if (devRole) {
+                    // 簡單的大小寫防呆處理
+                    const formattedRole = devRole.charAt(0).toUpperCase() + devRole.slice(1).toLowerCase();
+                    const validRoles = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
+                    
+                    if (validRoles.includes(formattedRole)) {
+                        // 強制設定身分
+                        localStorage.setItem('animalUser', formattedRole);
+                        // 生成一個新的測試用 UUID，避免跟真實用戶撞號
+                        localStorage.setItem('clientUUID', 'dev_test_' + Math.floor(Math.random() * 10000));
+                        alert(`已切換為測試身分：${formattedRole}`);
+                    } else {
+                        alert("角色代號錯誤，將執行普通重置。");
+                    }
                 }
+                
+                location.reload();
             } else if (pwd !== null) {
                 alert("密碼錯誤！");
             }
@@ -359,7 +380,6 @@
         }
 
         function fetchData() {
-            // 需要帶上 uuid 讓後端辨識
             const url = `${API_URL}?uuid=${clientUUID}`;
             fetch(url)
             .then(res => res.json())
