@@ -50,15 +50,13 @@
             <button onclick="login()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg">確認身分</button>
         </div>
 
-        <!-- 1.5 收件資料填寫 (新區塊) -->
+        <!-- 1.5 真實姓名填寫 (簡化版) -->
         <div id="profileSection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-blue-600 mb-8">
-            <h2 class="text-xl font-bold mb-2 text-center text-blue-800">📦 填寫收件資訊</h2>
-            <p class="text-sm text-gray-500 text-center mb-4">為了讓聖誕老人(Coupang)能寄送禮物，請填寫真實資料。這些資料只有配對給你的那個人看得到。</p>
+            <h2 class="text-xl font-bold mb-2 text-center text-blue-800">📛 填寫真實姓名</h2>
+            <p class="text-sm text-gray-500 text-center mb-4">讓抽到你的人知道「這隻動物」究竟是誰！<br>(地址請另外公佈在群組)</p>
             <div class="space-y-3">
-                <input type="text" id="inputName" placeholder="真實姓名 (收件人)" class="w-full p-3 border rounded">
-                <input type="text" id="inputPhone" placeholder="手機號碼 (09xx...)" class="w-full p-3 border rounded">
-                <textarea id="inputAddress" placeholder="詳細收件地址" rows="3" class="w-full p-3 border rounded"></textarea>
-                <button onclick="submitProfile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">儲存資料 & 下一步</button>
+                <input type="text" id="inputName" placeholder="請輸入你的真實姓名" class="w-full p-4 border-2 border-blue-200 rounded-xl text-lg text-center font-bold">
+                <button onclick="submitProfile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg">確認儲存 & 下一步</button>
             </div>
         </div>
 
@@ -108,8 +106,8 @@
     </main>
 
     <script>
-        // ⚠️ 請填入你的新 GAS 網址
-        const API_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'; 
+        // ⚠️ 請填入你的 GAS 網址 (如果剛才沒有重新部署產生新網址，則沿用舊的即可)
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec'; 
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
         
@@ -117,22 +115,21 @@
             shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星形狀的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心形狀的"],
             colors: ["紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的", "彩虹色的", "螢光色的", "木頭色的", "粉嫩色系的", "漸層色的", "純白色的", "五顏六色的"],
             functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的"],
-            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的"]
+            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "復古風格的", "滑溜溜的"]
         };
 
         let currentUser = localStorage.getItem('animalUser');
         let myFeatures = [];
         let finalSelection = [];
         let isDrawing = false;
-        let globalProfiles = {}; // 儲存從 API 抓回來的個資
+        let globalProfiles = {}; 
 
         document.addEventListener('DOMContentLoaded', () => {
             if (currentUser) {
-                // 如果已登入，檢查是否已填個資 (簡單檢查 localStorage，實際上還是要看 API)
                 if (localStorage.getItem('profileSubmitted') === 'true') {
                      showLoggedInView();
                 } else {
-                     showProfileView(); // 登入了但沒填個資
+                     showProfileView(); 
                 }
             } else {
                 showLoginView();
@@ -177,16 +174,13 @@
 
         function submitProfile() {
             const name = document.getElementById('inputName').value;
-            const address = document.getElementById('inputAddress').value;
-            const phone = document.getElementById('inputPhone').value;
-
-            if(!name || !address || !phone) return alert('請完整填寫所有欄位，方便禮物寄送！');
+            if(!name) return alert('請填寫真實姓名！');
 
             document.getElementById('loading').classList.remove('hidden');
             fetch(API_URL, {
                 redirect: "follow", method: 'POST',
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'submit_profile', nickname: currentUser, realName: name, address: address, phone: phone })
+                body: JSON.stringify({ action: 'submit_profile', nickname: currentUser, realName: name })
             })
             .then(res => res.json())
             .then(data => {
@@ -211,8 +205,6 @@
             playSfx('sfx-spin');
 
             const allFeaturesForAnim = [...FEATURE_DB.shapes, ...FEATURE_DB.colors, ...FEATURE_DB.functions, ...FEATURE_DB.states];
-            
-            // 邏輯修正：不重複類別
             const categories = Object.keys(FEATURE_DB);
             const selectedCategories = categories.sort(() => 0.5 - Math.random()).slice(0, 3);
             const finalDraw = selectedCategories.map(cat => {
@@ -340,7 +332,7 @@
             fetch(API_URL)
             .then(res => res.json())
             .then(data => {
-                globalProfiles = data.profiles || {}; // 存下所有人的個資 (實際上只會用來顯示 target 的)
+                globalProfiles = data.profiles || {}; 
                 renderWall(data.submissions);
                 document.getElementById('progressCount').innerText = data.submissionCount;
                 
@@ -425,20 +417,18 @@
                 `;
                 div.innerHTML = basicInfo;
 
-                // 🌟 如果這是我的任務，顯示對方的收件資料 🌟
+                // 🌟 只顯示名字 🌟
                 if (isMyMission) {
                     const targetProfile = globalProfiles[pair.to];
                     const detailsDiv = document.createElement('div');
                     detailsDiv.className = "mt-3 pt-3 border-t border-yellow-500/30 text-left text-sm text-yellow-100";
                     if(targetProfile) {
                         detailsDiv.innerHTML = `
-                            <p class="font-bold text-yellow-400 mb-1">🎁 寄送資訊 (請截圖保存)：</p>
-                            <p>姓名：${targetProfile.name}</p>
-                            <p>電話：${targetProfile.phone}</p>
-                            <p>地址：${targetProfile.address}</p>
+                            <p class="font-bold text-yellow-400 mb-1">🎁 收禮人身分揭曉：</p>
+                            <p class="text-xl text-white font-bold">${targetProfile.name}</p>
                         `;
                     } else {
-                        detailsDiv.innerHTML = `<p class="text-red-400">⚠️ 對方尚未填寫收件資料</p>`;
+                        detailsDiv.innerHTML = `<p class="text-red-400">⚠️ 對方尚未填寫姓名</p>`;
                     }
                     div.appendChild(detailsDiv);
                 }
