@@ -150,7 +150,7 @@
         const FEATURE_DB = {
             shapes: [
                 "長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的",
-                "三角形的", "星星形狀的", "動物造型的", "扁平的", "中空的", "巨大的", "迷你的", "愛心形狀的"
+                "三角形的", "星星形狀的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心形狀的"
             ],
             colors: [
                 "紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的",
@@ -161,7 +161,7 @@
                 "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的"
             ],
             states: [
-                "香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的",
+                "香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的",
                 "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "復古風格的", "滑溜溜的"
             ]
         };
@@ -375,14 +375,16 @@
         }
 
         // --- 資料讀取 ---
+        // --- 資料讀取與狀態顯示 (核心邏輯更新) ---
         function fetchData() {
             fetch(API_URL)
             .then(res => res.json())
             .then(data => {
+                // 1. 更新許願牆
                 renderWall(data.submissions);
                 document.getElementById('progressCount').innerText = data.submissionCount;
                 
-                // 邏輯判斷：如果已登入且已提交資料 -> 顯示「已提交」
+                // 2. 使用者狀態更新 (如果已登入且已提交)
                 if (currentUser && data.submissions[currentUser]) {
                     document.getElementById('lotterySection').classList.add('hidden');
                     document.getElementById('submittedState').classList.remove('hidden');
@@ -390,37 +392,46 @@
                         `${data.submissions[currentUser][0]} ＋ ${data.submissions[currentUser][1]}`;
                 }
 
-                // 配對狀態更新
-                const pWaiting = document.getElementById('pairingWaiting');
-                const pAction = document.getElementById('pairingAction');
-                const pResult = document.getElementById('pairingResult');
-                const pBar = document.getElementById('progressBar');
+                // 3. 嚴格的階段控制邏輯
+                const pWaiting = document.getElementById('pairingWaiting'); // 等待條
+                const pAction = document.getElementById('pairingAction');   // 配對按鈕
+                const pResult = document.getElementById('pairingResult');   // 配對結果
+                const pBar = document.getElementById('progressBar');        // 進度條長度
 
-                const pct = (data.submissionCount / 5) * 100;
+                // 更新進度條視覺
+                const pct = Math.min((data.submissionCount / 5) * 100, 100);
                 pBar.style.width = `${pct}%`;
 
+                // 狀態機判斷
                 if (data.isPaired) {
+                    // 階段 C: 遊戲結束，已配對
                     pWaiting.classList.add('hidden');
                     pAction.classList.add('hidden');
+                    
+                    // 只在第一次切換到顯示時播放特效
                     if (pResult.classList.contains('hidden')) {
                         playSfx('sfx-tada');
                         confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
                     }
                     pResult.classList.remove('hidden');
                     renderPairingResult(data.pairings);
-                } else if (data.canPair) {
+                    
+                } else if (data.submissionCount >= 5) {
+                    // 階段 B: 人數已滿，等待某人按下按鈕
                     pWaiting.classList.add('hidden');
-                    pAction.classList.remove('hidden');
-                    pResult.classList.add('hidden');
+                    pAction.classList.remove('hidden'); // 顯示按鈕
+                    pResult.classList.add('hidden');    // 確保結果是隱藏的
+                    
                 } else {
+                    // 階段 A: 人數未滿，等待中
                     pWaiting.classList.remove('hidden');
                     pAction.classList.add('hidden');
-                    pResult.classList.add('hidden');
+                    pResult.classList.add('hidden'); // 確保結果是隱藏的
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => console.error('Error:', err));
         }
-
+        
         function renderWall(submissions) {
             const grid = document.getElementById('wallGrid');
             grid.innerHTML = '';
