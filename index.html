@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聖誕動物匿名交換禮物 🎄</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .snow-bg {
+            background-color: #0f172a;
+            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+        }
+        .card-pop { animation: pop 0.3s ease-out forwards; }
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body class="snow-bg min-h-screen text-slate-100 pb-12">
+
+    <!-- Header -->
+    <header class="text-center py-8 px-4">
+        <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 聖誕動物禮物交換 🎁</h1>
+        <p class="text-slate-400">匿名 · 隨機特徵 · Coupang 採購挑戰</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto px-4 relative">
+        
+        <!-- Loading Spinner (Hidden by default) -->
+        <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500"></div>
+        </div>
+
+        <!-- SECTION 1: Login -->
+        <div id="loginSection" class="bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-green-700 mb-8">
+            <h2 class="text-xl font-bold mb-4 text-center">你是哪隻動物？ 🐾</h2>
+            <select id="animalSelect" class="w-full p-3 border rounded-lg mb-4 bg-slate-50">
+                <option value="" disabled selected>請選擇你的代號</option>
+                <option value="Penguin">Penguin (企鵝)</option>
+                <option value="Alpaca">Alpaca (羊駝)</option>
+                <option value="Sloth">Sloth (樹懶)</option>
+                <option value="Owl">Owl (貓頭鷹)</option>
+                <option value="Sea Otter">Sea Otter (海獺)</option>
+            </select>
+            <button onclick="login()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition">
+                進入遊戲
+            </button>
+        </div>
+
+        <!-- SECTION 2: Feature Lottery -->
+        <div id="lotterySection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-gold-500 mb-8 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 via-green-500 to-red-500"></div>
+            <h2 class="text-xl font-bold mb-2 text-center text-green-800">✨ 你的禮物特徵 ✨</h2>
+            <p class="text-sm text-center text-gray-500 mb-4">系統隨機抽出 3 個特徵，<br>請 <span class="text-red-600 font-bold">刪除 1 個</span>，保留 2 個作為最終許願。</p>
+
+            <!-- Draw Button -->
+            <div id="drawContainer" class="text-center py-4">
+                <button onclick="drawFeatures()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105">
+                    🎲 抽取我的特徵
+                </button>
+            </div>
+
+            <!-- Cards Container -->
+            <div id="cardsContainer" class="grid grid-cols-1 gap-3 hidden">
+                <!-- Cards will be injected here -->
+            </div>
+
+            <!-- Submit Button -->
+            <button id="submitBtn" onclick="submitFeatures()" class="hidden w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                🎁 確認並送出願望
+            </button>
+        </div>
+
+        <!-- SECTION 3: The Wall -->
+        <div id="wallSection" class="bg-slate-800 bg-opacity-80 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-slate-600 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-yellow-400">🎄 特徵許願牆</h2>
+                <button onclick="fetchData()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">↻ 刷新</button>
+            </div>
+            <div id="wallGrid" class="space-y-3">
+                <!-- Wall Items injected here -->
+                <p class="text-center text-slate-400">正在讀取資料...</p>
+            </div>
+        </div>
+
+        <!-- SECTION 4: Pairing -->
+        <div id="pairingSection" class="bg-red-900 bg-opacity-80 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-red-700">
+            <h2 class="text-xl font-bold text-white mb-4 text-center">🔗 禮物配對鏈</h2>
+            <p class="text-xs text-center text-red-200 mb-4">這是公開的配對結果，請將禮物送給箭頭指向的動物！</p>
+            <div id="pairingList" class="space-y-2 text-center text-lg font-medium">
+                <!-- Pairing Items injected here -->
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // ================= CONFIGURATION =================
+        // 請在此處貼上 Google Apps Script 部署後的 URL
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec'; 
+        // =================================================
+
+        // Database of Features
+        const FEATURE_DB = {
+            shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的"],
+            colors: ["紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的"],
+            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的"],
+            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的"]
+        };
+
+        const ANIMALS = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
+        let myFeatures = []; // Stores the 3 drawn features
+        let finalSelection = []; // Stores the 2 kept features
+        let currentUser = localStorage.getItem('animalUser');
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentUser) {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('lotterySection').classList.remove('hidden');
+                document.getElementById('drawContainer').innerHTML = `<p class='text-green-700 font-bold'>嗨，${currentUser}！</p>`;
+                checkStatus();
+            }
+            fetchData(); // Load wall and pairings initially
+        });
+
+        // --- Login Logic ---
+        function login() {
+            const select = document.getElementById('animalSelect');
+            if (!select.value) return alert('請選擇一個動物代號！');
+            
+            currentUser = select.value;
+            localStorage.setItem('animalUser', currentUser);
+            
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('lotterySection').classList.remove('hidden');
+            
+            // Check if user already submitted before allowing to draw
+            checkStatus();
+        }
+
+        // --- Check if user already submitted ---
+        function checkStatus() {
+            // Re-enable draw button if logic dictates, 
+            // but for now, we wait for fetchData to see if we have data on server
+        }
+
+        // --- Lottery Logic ---
+        function drawFeatures() {
+            // Flatten DB
+            const allFeatures = [
+                ...FEATURE_DB.shapes,
+                ...FEATURE_DB.colors,
+                ...FEATURE_DB.functions,
+                ...FEATURE_DB.states
+            ];
+
+            // Randomly select 3 unique
+            let shuffled = allFeatures.sort(() => 0.5 - Math.random());
+            myFeatures = shuffled.slice(0, 3);
+            finalSelection = [...myFeatures]; // Initially keep all
+
+            renderCards();
+            
+            // Hide draw button, show cards
+            document.getElementById('drawContainer').classList.add('hidden');
+            document.getElementById('cardsContainer').classList.remove('hidden');
+            document.getElementById('submitBtn').classList.remove('hidden');
+            document.getElementById('submitBtn').disabled = true; // Must delete one first
+            document.getElementById('submitBtn').innerText = "請刪除 1 個特徵";
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = '';
+
+            myFeatures.forEach(feature => {
+                const isDeleted = !finalSelection.includes(feature);
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-lg border-2 flex justify-between items-center transition ${isDeleted ? 'bg-gray-200 border-gray-300 opacity-50' : 'bg-red-50 border-red-200'}`;
+                
+                const text = document.createElement('span');
+                text.className = `font-bold ${isDeleted ? 'line-through text-gray-500' : 'text-red-700'}`;
+                text.innerText = feature;
+
+                const btn = document.createElement('button');
+                btn.className = `text-xs px-3 py-1 rounded ${isDeleted ? 'bg-gray-400 text-white' : 'bg-red-500 text-white hover:bg-red-600'}`;
+                btn.innerText = isDeleted ? "復原" : "刪除";
+                btn.onclick = () => toggleFeature(feature);
+
+                card.appendChild(text);
+                card.appendChild(btn);
+                container.appendChild(card);
+            });
+        }
+
+        function toggleFeature(feature) {
+            if (finalSelection.includes(feature)) {
+                // Remove it
+                if (finalSelection.length <= 2) {
+                    // Only allow deleting if we have 3 (logic is: must keep 2, so must delete 1)
+                    // Wait, logic: Start with 3. Must delete 1 to get 2.
+                    finalSelection = finalSelection.filter(f => f !== feature);
+                } else {
+                    // Already have 3, removing one to make it 2
+                     finalSelection = finalSelection.filter(f => f !== feature);
+                }
+            } else {
+                // Add it back
+                if (finalSelection.length < 3) {
+                    finalSelection.push(feature);
+                }
+            }
+            
+            renderCards();
+            updateSubmitBtn();
+        }
+
+        function updateSubmitBtn() {
+            const btn = document.getElementById('submitBtn');
+            if (finalSelection.length === 2) {
+                btn.disabled = false;
+                btn.innerText = "🎁 確認並送出願望";
+                btn.classList.remove('bg-gray-400');
+                btn.classList.add('bg-red-600');
+            } else {
+                btn.disabled = true;
+                btn.innerText = `目前保留 ${finalSelection.length} 個 (需保留 2 個)`;
+                btn.classList.add('bg-gray-400');
+                btn.classList.remove('bg-red-600');
+            }
+        }
+
+        // --- API Interaction ---
+        function submitFeatures() {
+            if (!currentUser) return;
+            showLoading(true);
+
+            const payload = {
+                nickname: currentUser,
+                feature1: finalSelection[0],
+                feature2: finalSelection[1]
+            };
+
+            // Use 'no-cors' mode is tricky with POST in GAS sometimes, 
+            // but text/plain body is usually handled best by the doPost(e) code provided.
+            fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                showLoading(false);
+                if(data.status === 'success') {
+                    alert('許願成功！');
+                    document.getElementById('lotterySection').innerHTML = `<div class='text-center py-8'><h3 class='text-2xl text-green-700 font-bold'>🎄 願望已掛上樹梢！</h3><p class='text-gray-500 mt-2'>請查看下方的許願牆</p></div>`;
+                    fetchData(); // Refresh wall
+                } else {
+                    alert('發生錯誤: ' + data.message);
+                }
+            })
+            .catch(err => {
+                showLoading(false);
+                console.error(err);
+                alert('連線錯誤，請稍後再試。');
+            });
+        }
+
+        function fetchData() {
+            fetch(API_URL)
+            .then(res => res.json())
+            .then(data => {
+                renderWall(data.submissions);
+                renderPairings(data.pairings);
+                
+                // If current user already submitted, hide lottery logic
+                if (currentUser && data.submissions[currentUser]) {
+                     document.getElementById('lotterySection').innerHTML = `<div class='text-center py-8'><h3 class='text-2xl text-green-700 font-bold'>🎄 願望已掛上樹梢！</h3><p class='text-gray-500 mt-2'>你的願望：${data.submissions[currentUser][0]} + ${data.submissions[currentUser][1]}</p></div>`;
+                }
+            })
+            .catch(err => console.error('Fetch error:', err));
+        }
+
+        // --- Rendering Wall & Pairings ---
+        function renderWall(submissions) {
+            const grid = document.getElementById('wallGrid');
+            grid.innerHTML = '';
+
+            ANIMALS.forEach(animal => {
+                const row = document.createElement('div');
+                row.className = "bg-slate-700 rounded p-3 flex items-center justify-between border border-slate-600";
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = "font-bold text-yellow-400 w-1/3";
+                nameSpan.innerText = animal + (animal === currentUser ? " (你)" : "");
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = "flex gap-2 w-2/3 justify-end";
+
+                if (submissions[animal]) {
+                    // Has data
+                    const f1 = document.createElement('span');
+                    f1.className = "bg-red-600 text-white text-xs px-2 py-1 rounded shadow";
+                    f1.innerText = submissions[animal][0];
+                    
+                    const f2 = document.createElement('span');
+                    f2.className = "bg-green-600 text-white text-xs px-2 py-1 rounded shadow";
+                    f2.innerText = submissions[animal][1];
+
+                    contentDiv.appendChild(f1);
+                    contentDiv.appendChild(f2);
+                } else {
+                    // Waiting
+                    contentDiv.innerHTML = `<span class="text-slate-500 text-sm italic">等待許願中...</span>`;
+                }
+
+                row.appendChild(nameSpan);
+                row.appendChild(contentDiv);
+                grid.appendChild(row);
+            });
+        }
+
+        function renderPairings(pairings) {
+            const container = document.getElementById('pairingList');
+            container.innerHTML = '';
+            
+            if (!pairings || pairings.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">配對生成中...</p>';
+                return;
+            }
+
+            pairings.forEach(pair => {
+                const div = document.createElement('div');
+                div.className = "bg-black bg-opacity-30 p-2 rounded text-red-100 flex justify-center items-center gap-2";
+                
+                // Highlight if current user is involved
+                let fromStyle = pair.from === currentUser ? "text-yellow-300 font-bold underline" : "";
+                let toStyle = pair.to === currentUser ? "text-yellow-300 font-bold underline" : "";
+
+                div.innerHTML = `<span class="${fromStyle}">${pair.from}</span> <span class="text-xs text-gray-400">送給 ➜</span> <span class="${toStyle}">${pair.to}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function showLoading(show) {
+            const el = document.getElementById('loading');
+            if(show) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
