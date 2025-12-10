@@ -146,7 +146,7 @@
             'Sea Otter': '海獺 🦦'
         };
 
-        // 擴充後的特徵資料庫 (共 52 個)
+        // 擴充後的特徵資料庫 (修正版)
         const FEATURE_DB = {
             shapes: [
                 "長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的",
@@ -154,15 +154,15 @@
             ],
             colors: [
                 "紅色的", "金色的", "透明的", "黑色的", "銀色的", "霧面的",
-                "彩虹色的", "螢光色的", "木頭色的", "粉嫩色系的", "漸層色的", "純白色的", "五顏六色的"
+                "彩虹色的", "綠色的", "木頭色的", "粉嫩色系的", "漸層色的", "純白色的", "五顏六色的"
             ],
             functions: [
-                "可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的",
-                "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的"
+                "可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "與清潔相關的",
+                "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "具收納功能的", "接觸肌膚的"
             ],
             states: [
-                "香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的",
-                "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "復古風格的", "滑溜溜的"
+                "香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "液體狀的",
+                "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "復古風格的", "滑溜溜的", "可愛的"
             ]
         };
 
@@ -231,7 +231,7 @@
             }
         }
 
-        // --- 抽籤動畫 ---
+        // --- 抽籤動畫 (邏輯修正：確保類別不重複) ---
         function startDrawAnimation() {
             if (isDrawing) return;
             isDrawing = true;
@@ -240,11 +240,30 @@
             
             playSfx('sfx-spin');
 
-            const allFeatures = [...FEATURE_DB.shapes, ...FEATURE_DB.colors, ...FEATURE_DB.functions, ...FEATURE_DB.states];
-            const finalDraw = allFeatures.sort(() => 0.5 - Math.random()).slice(0, 3);
+            // 1. 準備所有特徵用於「跑馬燈動畫」 (視覺效果用，還是隨機跳動)
+            const allFeaturesForAnim = [
+                ...FEATURE_DB.shapes, ...FEATURE_DB.colors, 
+                ...FEATURE_DB.functions, ...FEATURE_DB.states
+            ];
+
+            // 2. 決定「最終結果」 (核心邏輯修正：類別不重複)
+            // 步驟 A: 取得所有類別名稱 ['shapes', 'colors', 'functions', 'states']
+            const categories = Object.keys(FEATURE_DB);
+            
+            // 步驟 B: 洗牌類別，並取出前 3 個 (例如取出：['colors', 'shapes', 'states'])
+            const selectedCategories = categories.sort(() => 0.5 - Math.random()).slice(0, 3);
+            
+            // 步驟 C: 從這 3 個類別中，各抽出 1 個特徵
+            const finalDraw = selectedCategories.map(cat => {
+                const list = FEATURE_DB[cat];
+                const randomIndex = Math.floor(Math.random() * list.length);
+                return list[randomIndex];
+            });
+
             myFeatures = finalDraw;
             finalSelection = [...finalDraw];
 
+            // 3. 建立 3 個卡片插槽
             const container = document.getElementById('cardsContainer');
             container.innerHTML = '';
             for(let i=0; i<3; i++) {
@@ -255,22 +274,24 @@
                 container.appendChild(card);
             }
 
+            // 4. 執行動畫 (視覺上還是隨機跳動，增加緊張感)
             let steps = 0;
             const maxSteps = 20;
             const interval = setInterval(() => {
                 steps++;
                 for(let i=0; i<3; i++) {
-                    const randomText = allFeatures[Math.floor(Math.random() * allFeatures.length)];
+                    // 動畫過程中隨機顯示任何特徵
+                    const randomText = allFeaturesForAnim[Math.floor(Math.random() * allFeaturesForAnim.length)];
                     document.getElementById(`slot-${i}`).innerText = randomText;
                 }
                 
                 if (steps >= maxSteps) {
                     clearInterval(interval);
-                    revealFinalCards();
+                    revealFinalCards(); // 停止時顯示剛剛算好的 finalDraw
                 }
             }, 100);
         }
-
+        
         function revealFinalCards() {
             playSfx('sfx-win');
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
