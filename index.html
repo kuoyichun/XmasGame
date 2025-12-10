@@ -34,7 +34,7 @@
     <audio id="sfx-tada" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
 
     <!-- 重置按鈕 -->
-    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置</button>
+    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
 
     <header class="text-center py-8 px-4 mt-4">
         <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 2025聖誕神秘交換禮物</h1>
@@ -45,10 +45,10 @@
         <!-- Loading 遮罩 -->
         <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
-            <p class="text-white font-bold" id="loadingText">同步資料中...</p>
+            <p class="text-white font-bold" id="loadingText">處理中...</p>
         </div>
 
-        <!-- 0. 抽取角色區 (取代舊版登入) -->
+        <!-- 0. 抽取角色區 -->
         <div id="drawRoleSection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-purple-600 mb-8 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-full bg-purple-50 opacity-50 pointer-events-none"></div>
             <h2 class="text-2xl font-bold mb-4 text-center text-purple-900 relative z-10">🎭 你的神秘身分是？</h2>
@@ -140,7 +140,7 @@
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
         
-        // 特徵資料庫 (使用最新版本)
+        // 特徵資料庫
         const FEATURE_DB = {
             shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心圖案的"],
             colors: ["紅色的", "金色的", "透明的", "黑色的", "綠色的", "霧面的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
@@ -162,6 +162,13 @@
         let globalProfiles = {}; 
 
         document.addEventListener('DOMContentLoaded', () => {
+            // 【極速優化】在發送 API 請求前，先判斷是否要顯示「抽取角色」
+            // 這樣使用者進來就不會看到空白等待，而是直接看到按鈕
+            if (!currentUser) {
+                showSection('drawRoleSection');
+                document.getElementById('wallSection').classList.add('hidden');
+            }
+
             fetchData(); 
             setInterval(fetchData, 3000); 
         });
@@ -172,15 +179,15 @@
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
-            // 【關鍵修正】安全檢查：
-            // 如果本地記住自己是某個角色 (currentUser存在)，
+            // 【靜默重置】如果本地記住自己是某個角色 (currentUser存在)，
             // 但後端 (data.myRole) 卻說這個 UUID 沒角色 (null) -> 代表後端被 Reset 了
+            // 此時我們不跳 Alert，直接清除本地並顯示抽卡區
             if (currentUser && !data.myRole) {
-                console.log('Detected server reset. Clearing local state.');
+                console.log('Server reset detected. Silent sync.');
                 localStorage.removeItem('animalUser');
                 currentUser = null;
-                alert('🎅 遊戲資料庫已重置，請重新抽取角色！');
-                location.reload();
+                showSection('drawRoleSection');
+                document.getElementById('wallSection').classList.add('hidden');
                 return;
             }
 
@@ -192,7 +199,7 @@
 
             globalProfiles = data.profiles || {};
 
-            // 1. 如果還沒有角色 -> 顯示抽卡區，並隱藏許願牆 (保持神秘)
+            // 1. 如果還沒有角色 -> 顯示抽卡區 (如果上面 DOMContentLoaded 已經顯示過，這裡只是再次確認)
             if (!currentUser) {
                 showSection('drawRoleSection');
                 document.getElementById('wallSection').classList.add('hidden'); 
@@ -263,7 +270,7 @@
                     localStorage.setItem('animalUser', currentUser);
                     showRoleRevealAnimation(currentUser);
                 } else {
-                    alert('抽取失敗: ' + (data.message || '未知錯誤 (可能是角色已被抽完)'));
+                    alert('抽取失敗: ' + (data.message || '未知錯誤'));
                 }
             })
             .catch(err => {
