@@ -1,39 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎄 2025聖誕神秘交換禮物</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .snow-bg {
-            background-color: #0f172a;
-            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
-        }
-    </style>
-</head>
-<body class="snow-bg min-h-screen text-slate-100 pb-20 relative">
 
-    <audio id="sfx-spin" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
-    <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
-    <audio id="sfx-drum" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
-    <audio id="sfx-tada" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
-
-    <!-- 重置按鈕 (加密) -->
-    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置</button>
-
-    <header class="text-center py-8 px-4 mt-4">
-        <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 2025聖誕神秘交換禮物</h1>
-        <p class="text-slate-400 text-sm">5人到齊 · 自動分發角色 · 匿名許願</p>
-    </header>
-
-    <main class="max-w-md mx-auto px-4 relative">
-        <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
-            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
-            <p class="text-white font-bold" id="loadingText">同步資料中...</p>
         </div>
 
         <!-- 0. 大廳等待區 (新功能) -->
@@ -135,8 +100,8 @@
         const FEATURE_DB = {
             shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心圖案的"],
             colors: ["紅色的", "金色的", "透明的", "黑色的", "綠色的", "霧面的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的"],
-            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的"]
+            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "跟3C有關的"],
+            states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的", "感覺很養生的"]
         };
 
         // --- 變數管理 ---
