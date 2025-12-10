@@ -42,7 +42,7 @@
     </header>
 
     <main class="max-w-md mx-auto px-4 relative">
-        <!-- Loading 遮罩 -->
+        <!-- Loading 遮罩 (只用於配對或提交資料，抽卡時不顯示這個) -->
         <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
             <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
             <p class="text-white font-bold" id="loadingText">處理中...</p>
@@ -55,7 +55,7 @@
             <div class="text-center py-4 relative z-10">
                 <div class="text-6xl mb-6">❓</div>
                 <p class="text-gray-500 mb-6 text-sm">點擊按鈕，從命運牌堆中<br>抽取一張專屬於你的動物卡牌。</p>
-                <button onclick="drawRole()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transform transition hover:scale-105 active:scale-95">
+                <button id="btnDrawRole" onclick="drawRole()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transform transition hover:scale-105 active:scale-95">
                     🎴 抽取我的角色
                 </button>
             </div>
@@ -63,11 +63,16 @@
 
         <!-- 0.5 角色揭曉動畫區 (預設隱藏) -->
         <div id="roleRevealSection" class="hidden fixed inset-0 z-40 bg-slate-900 flex flex-col items-center justify-center text-center px-4">
-            <h2 class="text-white text-2xl font-bold mb-4">🎉 命運決定了！</h2>
-            <p class="text-gray-300 mb-6">你的身分是...</p>
-            <div id="revealCard" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl transform scale-0 transition-all duration-700 w-64 h-80 flex flex-col items-center justify-center border-4 border-yellow-400">
-                <div class="text-6xl mb-4">❓</div>
+            <h2 id="revealTitle" class="text-white text-2xl font-bold mb-4 animate-pulse">🎲 命運安排中...</h2>
+            <p id="revealSubtitle" class="text-gray-300 mb-6">正在從牌堆抽出...</p>
+            
+            <div id="revealCard" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl transform transition-all duration-500 w-64 h-80 flex flex-col items-center justify-center border-4 border-purple-400">
+                <!-- 初始狀態：洗牌動畫 -->
+                <div id="cardContent">
+                    <div class="text-6xl mb-4 animate-bounce">🃏</div>
+                </div>
             </div>
+            
             <button onclick="confirmRole()" class="mt-10 bg-yellow-500 hover:bg-yellow-600 text-white px-10 py-3 rounded-full font-bold shadow-lg hidden animate-bounce" id="enterGameBtn">
                 進入遊戲 ➜
             </button>
@@ -163,7 +168,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             // 【極速優化】在發送 API 請求前，先判斷是否要顯示「抽取角色」
-            // 這樣使用者進來就不會看到空白等待，而是直接看到按鈕
             if (!currentUser) {
                 showSection('drawRoleSection');
                 document.getElementById('wallSection').classList.add('hidden');
@@ -179,9 +183,7 @@
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
-            // 【靜默重置】如果本地記住自己是某個角色 (currentUser存在)，
-            // 但後端 (data.myRole) 卻說這個 UUID 沒角色 (null) -> 代表後端被 Reset 了
-            // 此時我們不跳 Alert，直接清除本地並顯示抽卡區
+            // 【靜默重置】
             if (currentUser && !data.myRole) {
                 console.log('Server reset detected. Silent sync.');
                 localStorage.removeItem('animalUser');
@@ -191,7 +193,7 @@
                 return;
             }
 
-            // 正常流程：後端有資料，但本地沒資料 (例如換瀏覽器/清快取後回來)
+            // 正常流程
             if (!currentUser && data.myRole) {
                 currentUser = data.myRole;
                 localStorage.setItem('animalUser', currentUser);
@@ -199,14 +201,14 @@
 
             globalProfiles = data.profiles || {};
 
-            // 1. 如果還沒有角色 -> 顯示抽卡區 (如果上面 DOMContentLoaded 已經顯示過，這裡只是再次確認)
+            // 1. 如果還沒有角色
             if (!currentUser) {
                 showSection('drawRoleSection');
                 document.getElementById('wallSection').classList.add('hidden'); 
                 return;
             }
 
-            // 2. 如果已經有角色，顯示對應流程，並顯示許願牆
+            // 2. 如果已經有角色
             document.getElementById('wallSection').classList.remove('hidden'); 
             
             document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
@@ -252,11 +254,21 @@
             }
         }
 
-        // --- 抽取角色 ---
+        // --- 抽取角色 (極速版) ---
         function drawRole() {
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('loadingText').innerText = "命運抽取中...";
-            
+            // 1. 立即給予 UI 回饋 (按鈕變色、禁用)，防止卡頓感
+            const btn = document.getElementById('btnDrawRole');
+            btn.disabled = true;
+            btn.innerText = "🎴 正在抽出...";
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // 2. 立即顯示遮罩動畫 (不等待網路)
+            const revealSec = document.getElementById('roleRevealSection');
+            const cardContent = document.getElementById('cardContent');
+            revealSec.classList.remove('hidden');
+            playSfx('sfx-drum'); // 立即播放鼓聲
+
+            // 3. 背景執行網路請求
             fetch(API_URL, {
                 redirect: "follow", method: 'POST',
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -264,44 +276,57 @@
             })
             .then(res => res.json())
             .then(data => {
-                document.getElementById('loading').classList.add('hidden');
                 if (data.status === 'success' && data.role) {
                     currentUser = data.role;
                     localStorage.setItem('animalUser', currentUser);
-                    showRoleRevealAnimation(currentUser);
+                    // 網路回來後，接續顯示結果
+                    showRoleRevealResult(currentUser);
                 } else {
                     alert('抽取失敗: ' + (data.message || '未知錯誤'));
+                    // 如果失敗，恢復按鈕
+                    btn.disabled = false;
+                    btn.innerText = "🎴 抽取我的角色";
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    revealSec.classList.add('hidden');
                 }
             })
             .catch(err => {
-                document.getElementById('loading').classList.add('hidden');
                 alert('連線錯誤');
+                revealSec.classList.add('hidden');
+                btn.disabled = false;
+                btn.innerText = "🎴 抽取我的角色";
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             });
         }
 
-        // --- 角色揭曉動畫 ---
-        function showRoleRevealAnimation(role) {
+        // --- 顯示結果 (接續上面的動畫) ---
+        function showRoleRevealResult(role) {
             const zhName = ANIMAL_NAMES[role];
-            const revealSec = document.getElementById('roleRevealSection');
-            const card = document.getElementById('revealCard');
-            
-            revealSec.classList.remove('hidden');
-            playSfx('sfx-drum');
+            const cardContent = document.getElementById('cardContent');
+            const revealCard = document.getElementById('revealCard');
+            const revealTitle = document.getElementById('revealTitle');
+            const revealSubtitle = document.getElementById('revealSubtitle');
 
+            // 稍微延遲一下下，讓鼓聲有點時間跑 (如果網路太快的話)
             setTimeout(() => {
-                card.classList.remove('scale-0');
-                card.classList.add('scale-100');
+                playSfx('sfx-win');
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
                 
-                setTimeout(() => {
-                    playSfx('sfx-win');
-                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
-                    card.innerHTML = `
-                        <div class="text-6xl mb-4 animate-bounce">${zhName.split(' ')[1]}</div>
-                        <div class="text-3xl font-bold text-indigo-600">${zhName.split(' ')[0]}</div>
-                    `;
-                    document.getElementById('enterGameBtn').classList.remove('hidden');
-                }, 2000); 
-            }, 500);
+                // 改變卡片樣式
+                revealCard.classList.remove('border-purple-400');
+                revealCard.classList.add('border-yellow-400', 'scale-110'); // 放大一下
+                
+                revealTitle.innerText = "🎉 角色分配完成！";
+                revealTitle.classList.remove('animate-pulse');
+                revealSubtitle.innerText = "你的神秘身分是...";
+
+                cardContent.innerHTML = `
+                    <div class="text-6xl mb-4 animate-bounce">${zhName.split(' ')[1]}</div>
+                    <div class="text-3xl font-bold text-indigo-600">${zhName.split(' ')[0]}</div>
+                `;
+                
+                document.getElementById('enterGameBtn').classList.remove('hidden');
+            }, 1000); 
         }
 
         function confirmRole() {
@@ -324,10 +349,8 @@
             const pwd = prompt("【開發者模式】\n請輸入密碼來重置身分：");
             
             if (pwd === "mumu") {
-                // 1. 清除舊資料
                 localStorage.clear();
                 
-                // 2. 讓開發者指定角色
                 const devRole = prompt("密碼正確！\n請輸入你想扮演的角色代號 (直接進入該角色)：\n\n選項：Penguin, Alpaca, Sloth, Owl, Sea Otter\n\n(若留空則為完全重置，回到抽卡畫面)");
                 
                 if (devRole) {
@@ -335,9 +358,7 @@
                     const validRoles = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
                     
                     if (validRoles.includes(formattedRole)) {
-                        // 強制設定身分
                         localStorage.setItem('animalUser', formattedRole);
-                        // 生成一個新的測試用 UUID，避免跟真實用戶撞號
                         localStorage.setItem('clientUUID', 'dev_test_' + Math.floor(Math.random() * 10000));
                         alert(`已切換為測試身分：${formattedRole}`);
                     } else {
