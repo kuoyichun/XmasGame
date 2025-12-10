@@ -23,11 +23,11 @@
     <audio id="sfx-tada" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
 
     <!-- 重置按鈕 (加密) -->
-    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
+    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置</button>
 
     <header class="text-center py-8 px-4 mt-4">
         <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 2025聖誕神秘交換禮物</h1>
-        <p class="text-slate-400 text-sm">湊滿 5 人 · 抽出特徵 · 公開配對</p>
+        <p class="text-slate-400 text-sm">5人到齊 · 自動分發角色 · 匿名許願</p>
     </header>
 
     <main class="max-w-md mx-auto px-4 relative">
@@ -36,19 +36,32 @@
             <p class="text-white font-bold" id="loadingText">同步資料中...</p>
         </div>
 
-        <!-- 1. 登入 -->
-        <div id="loginSection" class="bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-green-700 mb-8">
-            <h2 class="text-xl font-bold mb-2 text-center text-green-800">你是哪隻動物？ 🐾</h2>
-            <p class="text-sm text-gray-500 text-center mb-4">請依照主辦人分配的角色登入</p>
-            <select id="animalSelect" class="w-full p-4 border-2 border-green-200 rounded-xl mb-4 bg-green-50 text-lg font-bold text-green-900">
-                <option value="" disabled selected>👇 選擇你的代號</option>
-                <option value="Penguin">Penguin (企鵝 🐧)</option>
-                <option value="Alpaca">Alpaca (羊駝 🦙)</option>
-                <option value="Sloth">Sloth (樹懶 🦥)</option>
-                <option value="Owl">Owl (貓頭鷹 🦉)</option>
-                <option value="Sea Otter">Sea Otter (海獺 🦦)</option>
-            </select>
-            <button onclick="login()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg">確認身分</button>
+        <!-- 0. 大廳等待區 (新功能) -->
+        <div id="lobbySection" class="bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-indigo-600 mb-8">
+            <h2 class="text-xl font-bold mb-2 text-center text-indigo-800">🎮 準備室</h2>
+            <div id="lobbyStatus" class="text-center py-6">
+                <p class="text-gray-500 mb-2">目前加入人數</p>
+                <div class="text-5xl font-bold text-indigo-600 mb-2"><span id="lobbyCount">0</span><span class="text-2xl text-gray-400">/5</span></div>
+                <p class="text-sm text-gray-400">湊滿 5 人系統將自動分配角色</p>
+            </div>
+            
+            <button id="joinBtn" onclick="joinGame()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg animate-pulse">
+                👋 我要加入遊戲
+            </button>
+            <p id="joinedMsg" class="hidden text-center text-green-600 font-bold py-4 bg-green-50 rounded-lg mt-2">
+                ✅ 已加入！等待其他人...
+            </p>
+        </div>
+
+        <!-- 0.5 角色揭曉動畫區 -->
+        <div id="roleRevealSection" class="hidden fixed inset-0 z-40 bg-slate-900 flex flex-col items-center justify-center text-center px-4">
+            <h2 class="text-white text-2xl font-bold mb-4">🎉 角色分配完成！</h2>
+            <p class="text-gray-300 mb-6">你的神秘身分是...</p>
+            <div id="revealCard" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl transform scale-0 transition-all duration-700">
+                <div class="text-6xl mb-4">❓</div>
+                <div class="text-2xl font-bold">???</div>
+            </div>
+            <button onclick="confirmRole()" class="mt-8 bg-yellow-500 text-white px-8 py-3 rounded-full font-bold hidden" id="enterGameBtn">進入許願環節 ➜</button>
         </div>
 
         <!-- 1.5 真實姓名填寫 -->
@@ -114,27 +127,39 @@
     </main>
 
     <script>
-        // ⚠️ 請填入你的 GAS 網址 (維持你原本的)
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec'; 
+        // ⚠️ 你的 GAS 網址
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec';
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
         
-        // 2025 新版資料庫
         const FEATURE_DB = {
             shapes: ["長條狀的", "圓圓的", "方形的", "不規則形狀", "彎曲的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "有洞洞的", "巨大的", "迷你的", "愛心圖案的"],
             colors: ["紅色的", "金色的", "透明的", "黑色的", "綠色的", "霧面的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "感覺很養生的"],
+            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "純裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以抱著睡的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的"],
             states: ["香香的", "冰冷的", "會發光的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "滑溜溜的", "液體狀的", "可愛的", "跟阿mu一樣胖胖的"]
         };
 
-        let currentUser = localStorage.getItem('animalUser');
+        // --- 變數管理 ---
+        // 生成或讀取 UUID (用來識別這個瀏覽器)
+        let clientUUID = localStorage.getItem('clientUUID');
+        if (!clientUUID) {
+            clientUUID = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('clientUUID', clientUUID);
+        }
+
+        let currentUser = localStorage.getItem('animalUser'); // 這是分配到的角色
         let myFeatures = [];
         let finalSelection = [];
         let isDrawing = false;
         let globalProfiles = {}; 
-        let isDataLoaded = false;
+        let hasJoinedLobby = localStorage.getItem('hasJoinedLobby') === 'true';
 
         document.addEventListener('DOMContentLoaded', () => {
+            // 介面初始化
+            if (hasJoinedLobby) {
+                document.getElementById('joinBtn').classList.add('hidden');
+                document.getElementById('joinedMsg').classList.remove('hidden');
+            }
             fetchData(); // 立即同步
             setInterval(fetchData, 3000); // 每3秒同步
         });
@@ -145,31 +170,49 @@
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
+            // 更新大廳人數
+            document.getElementById('lobbyCount').innerText = data.lobbyCount || 0;
+
+            // 檢查是否收到角色分配
+            if (!currentUser && data.myRole) {
+                // !!! 偵測到分配！顯示揭曉動畫 !!!
+                currentUser = data.myRole;
+                localStorage.setItem('animalUser', currentUser);
+                showRoleRevealAnimation(currentUser);
+                return; // 動畫中暫停其他更新
+            }
+
+            // 更新個資庫
             globalProfiles = data.profiles || {};
 
+            // 1. 如果還沒有角色 -> 顯示大廳
             if (!currentUser) {
-                showSection('loginSection');
+                showSection('lobbySection');
                 return;
             }
 
+            // 2. 如果已經有角色，隱藏大廳，進入後續流程
             document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
 
             const mySubmission = data.submissions[currentUser];
             const myProfile = data.profiles[currentUser];
 
             if (mySubmission) {
+                // 已完成
                 document.getElementById('mySubmittedFeatures').innerText = `${mySubmission[0]} ＋ ${mySubmission[1]}`;
                 document.getElementById('mySubmittedName').innerText = myProfile ? myProfile.name : "(資料同步中)";
                 showSection('submittedState');
             } 
             else if (myProfile) {
+                // 已填姓名，待抽特徵
                 showSection('lotterySection');
             } 
             else {
+                // 已分配角色，待填姓名
                 showSection('profileSection');
             }
 
-            // --- 配對狀態控制 (修復閃爍問題) ---
+            // --- 配對狀態控制 ---
             const pWaiting = document.getElementById('pairingWaiting');
             const pAction = document.getElementById('pairingAction');
             const pResult = document.getElementById('pairingResult');
@@ -178,15 +221,12 @@
                 pWaiting.classList.add('hidden');
                 pAction.classList.add('hidden');
                 
-                // 修正：只有當配對結果區塊是「隱藏」狀態時，才執行渲染和動畫
-                // 這樣可以防止每 3 秒自動重畫一次導致的閃爍
                 if (pResult.classList.contains('hidden')) {
                     playSfx('sfx-tada');
                     confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
                     pResult.classList.remove('hidden');
-                    renderPairingResult(data.pairings); // 移到這裡面
+                    renderPairingResult(data.pairings); 
                 }
-                
             } else if (data.submissionCount >= 5) {
                 pWaiting.classList.add('hidden');
                 pAction.classList.remove('hidden');
@@ -198,22 +238,69 @@
             }
         }
 
+        // --- 加入遊戲 ---
+        function joinGame() {
+            document.getElementById('loading').classList.remove('hidden');
+            fetch(API_URL, {
+                redirect: "follow", method: 'POST',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: 'join_lobby', uuid: clientUUID })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').classList.add('hidden');
+                if (data.status === 'success' || data.message === 'Assigned') {
+                    hasJoinedLobby = true;
+                    localStorage.setItem('hasJoinedLobby', 'true');
+                    document.getElementById('joinBtn').classList.add('hidden');
+                    document.getElementById('joinedMsg').classList.remove('hidden');
+                    fetchData();
+                } else {
+                    alert('加入失敗: ' + data.message);
+                }
+            });
+        }
+
+        // --- 角色揭曉動畫 ---
+        function showRoleRevealAnimation(role) {
+            const zhName = ANIMAL_NAMES[role];
+            const revealSec = document.getElementById('roleRevealSection');
+            const card = document.getElementById('revealCard');
+            
+            // 隱藏其他區塊
+            showSection('roleRevealSection'); // 這裡只是為了隱藏其他的，reveal本身是fixed
+            revealSec.classList.remove('hidden');
+            
+            playSfx('sfx-drum');
+
+            setTimeout(() => {
+                card.classList.remove('scale-0', 'scale-100');
+                card.classList.add('scale-100');
+                
+                setTimeout(() => {
+                    playSfx('sfx-win');
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
+                    card.innerHTML = `
+                        <div class="text-6xl mb-4 animate-bounce">${zhName.split(' ')[1]}</div>
+                        <div class="text-3xl font-bold text-indigo-600">${zhName.split(' ')[0]}</div>
+                    `;
+                    document.getElementById('enterGameBtn').classList.remove('hidden');
+                }, 2000);
+            }, 500);
+        }
+
+        function confirmRole() {
+            document.getElementById('roleRevealSection').classList.add('hidden');
+            fetchData(); // 重新觸發狀態檢查，會自動導向 profileSection
+        }
+
         function showSection(sectionId) {
-            const sections = ['loginSection', 'profileSection', 'lotterySection', 'submittedState'];
+            const sections = ['lobbySection', 'profileSection', 'lotterySection', 'submittedState'];
             sections.forEach(id => {
                 const el = document.getElementById(id);
                 if (id === sectionId) el.classList.remove('hidden');
                 else el.classList.add('hidden');
             });
-        }
-
-        function login() {
-            const select = document.getElementById('animalSelect');
-            if (!select.value) return alert('請選擇一個動物代號！');
-            currentUser = select.value;
-            localStorage.setItem('animalUser', currentUser);
-            document.getElementById('loading').classList.remove('hidden');
-            fetchData(); 
         }
 
         function logout() {
@@ -276,7 +363,9 @@
         }
 
         function fetchData() {
-            fetch(API_URL)
+            // 需要帶上 uuid 讓後端辨識
+            const url = `${API_URL}?uuid=${clientUUID}`;
+            fetch(url)
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loading').classList.add('hidden');
