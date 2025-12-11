@@ -27,24 +27,12 @@
 </head>
 <body class="snow-bg min-h-screen text-slate-100 pb-20 relative">
 
-    <!-- 音效區 (已加入 ?v=final_fix 強制瀏覽器重新下載，確保音效不同) -->
-    
-    <!-- 1. 鼓聲 (長一點的滾奏) -->
-    <audio id="sfx-drum" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg" preload="auto"></audio>
-    <!-- 備用鼓聲：如果上面太卡通，這邊用代碼切換，先用這個更有張力的 -->
-    <audio id="sfx-drum-roll" src="https://cdn.pixabay.com/audio/2022/03/10/audio_822cb33780.mp3?v=final_fix" preload="auto"></audio>
-
-    <!-- 2. 拉霸轉動聲 (快速滴答聲) -->
-    <audio id="sfx-spin" src="https://cdn.pixabay.com/audio/2022/03/24/audio_33a763c0f6.mp3?v=final_fix" preload="auto"></audio>
-    
-    <!-- 3. 成功/揭曉 (響亮號角) -->
-    <audio id="sfx-tada" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3?v=final_fix" preload="auto"></audio>
-    
-    <!-- 4. 配對運算中 (魔法風鈴) -->
-    <audio id="sfx-magic" src="https://cdn.pixabay.com/audio/2022/03/19/audio_97af9b0496.mp3?v=final_fix" preload="auto"></audio>
-    
-    <!-- 5. 按鈕點擊 (清脆的波一聲) -->
-    <audio id="sfx-click" src="https://cdn.pixabay.com/audio/2022/03/15/audio_736881c621.mp3?v=final_fix" preload="auto"></audio>
+    <!-- 音效區 -->
+    <audio id="sfx-drum" src="https://cdn.pixabay.com/audio/2024/09/13/audio_1492209736.mp3?v=fix2" preload="auto"></audio>
+    <audio id="sfx-spin" src="https://cdn.pixabay.com/audio/2022/03/10/audio_c3e660e807.mp3?v=fix2" preload="auto"></audio>
+    <audio id="sfx-tada" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3?v=fix2" preload="auto"></audio>
+    <audio id="sfx-magic" src="https://cdn.pixabay.com/audio/2022/03/19/audio_97af9b0496.mp3?v=fix2" preload="auto"></audio>
+    <audio id="sfx-click" src="https://cdn.pixabay.com/audio/2022/03/15/audio_736881c621.mp3?v=fix2" preload="auto"></audio>
 
     <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
 
@@ -120,7 +108,7 @@
             <p class="text-sm text-gray-600">真實姓名：<span id="mySubmittedName" class="font-bold"></span></p>
         </div>
 
-        <!-- 4. 許願牆 -->
+        <!-- 4. 許願牆 (預設隱藏，登入後顯示，但未配對前顯示保密狀態) -->
         <div id="wallSection" class="hidden bg-slate-800 bg-opacity-90 backdrop-blur rounded-xl p-5 shadow-xl border border-slate-600 mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-yellow-400">📋 許願進度 (<span id="progressCount">0</span>/5)</h2>
@@ -158,7 +146,7 @@
     </main>
 
     <script>
-        // ⚠️ 你的 GAS 網址 (維持不變)
+        // ⚠️ 你的 GAS 網址
         const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec';
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
@@ -182,19 +170,18 @@
         let isDrawing = false;
         let globalProfiles = {}; 
 
-        // --- 音效管理 (確保音效不同) ---
         const sounds = {
-            drum: document.getElementById('sfx-drum-roll'), // 使用長鼓聲
-            spin: document.getElementById('sfx-spin'),      // 使用拉霸聲
-            tada: document.getElementById('sfx-tada'),      // 使用慶祝聲
-            magic: document.getElementById('sfx-magic'),    // 使用魔法聲
-            click: document.getElementById('sfx-click')     // 使用點擊聲
+            drum: document.getElementById('sfx-drum'),
+            spin: document.getElementById('sfx-spin'),
+            tada: document.getElementById('sfx-tada'),
+            magic: document.getElementById('sfx-magic'),
+            click: document.getElementById('sfx-click')
         };
 
         function playSfx(name) {
             const audio = sounds[name];
             if(audio) {
-                audio.volume = (name === 'magic' || name === 'drum') ? 0.3 : 0.6; // 背景音小聲一點，音效大聲一點
+                audio.volume = (name === 'magic' || name === 'drum') ? 0.3 : 0.6;
                 audio.currentTime = 0;
                 audio.play().catch(e => console.log('Audio error:', e));
             }
@@ -209,7 +196,6 @@
             setInterval(fetchData, 3000); 
         });
 
-        // --- 核心更新 ---
         function updateUIState(data) {
             document.getElementById('progressCount').innerText = data.submissionCount;
             const pct = Math.min((data.submissionCount/5)*100, 100);
@@ -246,7 +232,6 @@
             const currentVisible = document.querySelector('main > div:not(.hidden):not(#loading):not(#roleRevealSection):not(#wallSection):not(#pairingSection)');
             const currentId = currentVisible ? currentVisible.id : '';
 
-            // 避免打斷配對動畫
             if (!document.getElementById('pairingOverlay').classList.contains('hidden')) return;
 
             if (mySubmission && currentId !== 'submittedState') {
@@ -270,7 +255,6 @@
                 pAction.classList.add('hidden');
                 
                 if (pResult.classList.contains('hidden')) {
-                    // 只在初次顯示結果時播放音效
                     playSfx('tada');
                     confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
                     pResult.classList.remove('hidden');
@@ -287,7 +271,6 @@
             }
         }
 
-        // --- 抽取角色 ---
         function drawRole() {
             playSfx('click');
             const btn = document.getElementById('btnDrawRole');
@@ -297,8 +280,6 @@
 
             const revealSec = document.getElementById('roleRevealSection');
             revealSec.classList.remove('hidden');
-            
-            // 播放長鼓聲
             playSfx('drum'); 
 
             fetch(API_URL, {
@@ -335,10 +316,8 @@
             const revealCard = document.getElementById('revealCard');
             const revealTitle = document.getElementById('revealTitle');
 
-            // 確保鼓聲播了一陣子再揭曉 (至少 2 秒)
             setTimeout(() => {
-                // 停止鼓聲，播放成功聲
-                const drum = document.getElementById('sfx-drum-roll');
+                const drum = document.getElementById('sfx-drum');
                 if(drum) { drum.pause(); drum.currentTime = 0; }
                 playSfx('tada');
                 
@@ -366,11 +345,10 @@
             fetchData();
         }
 
-        // --- 配對流程 ---
         function startPairingProcess() {
             if(!confirm("確定要進行最終配對嗎？")) return;
             
-            playSfx('magic'); // 播放懸疑音效
+            playSfx('magic'); 
             
             const overlay = document.getElementById('pairingOverlay');
             overlay.classList.remove('hidden');
@@ -399,7 +377,7 @@
                     } else {
                         alert('配對失敗：' + data.message);
                     }
-                }, 3000); // 至少跑3秒動畫
+                }, 3000); 
             })
             .catch(err => {
                 clearInterval(shuffleInterval);
@@ -421,7 +399,7 @@
             const pwd = prompt("【開發者模式】\n請輸入密碼來重置身分：");
             if (pwd === "mumu") {
                 localStorage.clear();
-                const devRole = prompt("密碼正確！\n指定角色代號 ('Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter')\n(留空則完全重置)");
+                const devRole = prompt("密碼正確！\n指定角色代號 (Penguin, Alpaca...)\n(留空則完全重置)");
                 if (devRole) {
                     const formattedRole = devRole.charAt(0).toUpperCase() + devRole.slice(1).toLowerCase();
                     const validRoles = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
@@ -489,15 +467,31 @@
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loading').classList.add('hidden');
-                renderWall(data.submissions);
+                // 傳入 isPaired 參數來決定是否隱藏許願牆內容
+                renderWall(data.submissions, data.isPaired);
                 updateUIState(data);
             })
             .catch(err => console.error(err));
         }
 
-        function renderWall(submissions) {
+        // 修改後的 renderWall：根據 isPaired 決定顯示內容
+        function renderWall(submissions, isPaired) {
             const grid = document.getElementById('wallGrid');
             grid.innerHTML = '';
+
+            // CASE 1: 還沒配對 -> 顯示保密狀態
+            if (!isPaired) {
+                grid.innerHTML = `
+                    <div class="col-span-1 text-center py-8 bg-slate-700/50 rounded-xl border border-slate-600 border-dashed text-slate-400">
+                        <div class="text-4xl mb-2 animate-bounce-slow">🤫</div>
+                        <p class="text-yellow-400 font-bold text-lg">許願名單保密中</p>
+                        <p class="text-xs mt-2 opacity-70">等待所有人完成並配對後<br>才會揭曉是誰許了什麼願望喔！</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // CASE 2: 已配對 -> 顯示完整名單
             ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'].forEach(engName => {
                 const zhName = ANIMAL_NAMES[engName];
                 const row = document.createElement('div');
@@ -565,7 +559,7 @@
             isDrawing = true;
             document.getElementById('lotteryIntro').classList.add('hidden');
             document.getElementById('cardsContainer').classList.remove('hidden');
-            playSfx('spin'); // 播放拉霸聲
+            playSfx('spin');
 
             const allFeaturesForAnim = [...FEATURE_DB.shapes, ...FEATURE_DB.colors, ...FEATURE_DB.functions, ...FEATURE_DB.states];
             const categories = Object.keys(FEATURE_DB);
@@ -602,7 +596,7 @@
         }
 
         function revealFinalCards() {
-            playSfx('tada'); // 播放成功聲
+            playSfx('tada');
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
             renderCards();
             document.getElementById('submitBtn').classList.remove('hidden');
