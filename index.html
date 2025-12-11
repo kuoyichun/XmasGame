@@ -1,659 +1,195 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎄 2025聖誕神秘交換禮物</title>
+const ANIMALS = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
+const scriptProperties = PropertiesService.getScriptProperties();
+
+// --- 重置函式 ---
+function resetAllData() {
+  scriptProperties.deleteProperty('PAIRING_DATA');
+  scriptProperties.deleteProperty('ROLE_MAP');
+  
+  // 1. 洗牌並存入牌堆
+  const shuffled = [...ANIMALS].sort(() => 0.5 - Math.random());
+  scriptProperties.setProperty('AVAILABLE_ROLES', JSON.stringify(shuffled));
+  
+  // 2. 清除試算表
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Data');
+  if (sheet) {
+    sheet.clear();
+    sheet.appendRow(['Nickname', 'Feature1', 'Feature2', 'Timestamp', 'RealName']); 
+  }
+  console.log("遊戲已重置！");
+}
+
+function doGet(e) {
+  const uuid = e.parameter.uuid;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Data');
+  const rows = sheet.getDataRange().getValues();
+  rows.shift(); 
+  
+  const submissions = {};
+  const profiles = {}; 
+  let validCount = 0;
+
+  rows.forEach(row => {
+    // 判斷是否有效許願 (有特徵)
+    if(row[0] && row[1] && row[2]) {
+      submissions[row[0]] = [row[1], row[2]];
+      validCount++;
+    }
+    // 判斷是否有填寫姓名
+    if(row[0] && row[4]) {
+      profiles[row[0]] = { name: row[4] };
+    }
+  });
+
+  let roleMapJson = scriptProperties.getProperty('ROLE_MAP');
+  let roleMap = roleMapJson ? JSON.parse(roleMapJson) : {};
+
+  let pairingJson = scriptProperties.getProperty('PAIRING_DATA');
+  let pairings = pairingJson ? JSON.parse(pairingJson) : null;
+  if (validCount < 5) pairings = null;
+
+  let myAssignedRole = null;
+  if (uuid && roleMap[uuid]) {
+    myAssignedRole = roleMap[uuid];
+  }
+
+  const responseData = {
+    myRole: myAssignedRole,        
+    submissions: submissions,
+    profiles: profiles,
+    pairings: pairings,
+    submissionCount: validCount,
+    isPaired: !!pairings,      
+    canPair: validCount >= 5   
+  };
+
+  return ContentService.createTextOutput(JSON.stringify(responseData))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  
+  try {
+    const params = JSON.parse(e.postData.contents);
+    const action = params.action; 
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Data');
+
+    // --- 動作 0: 抽取角色 (加入自動回收邏輯) ---
+    if (action === 'draw_role') {
+      const uuid = params.uuid;
+      
+      let roleMapJson = scriptProperties.getProperty('ROLE_MAP');
+      let roleMap = roleMapJson ? JSON.parse(roleMapJson) : {};
+
+      // 1. 如果此 UUID 已經有角色，直接回傳
+      if (roleMap[uuid]) {
+         return ContentService.createTextOutput(JSON.stringify({ status: 'success', role: roleMap[uuid] }));
+      }
+
+      // 2. 讀取牌堆
+      let availableJson = scriptProperties.getProperty('AVAILABLE_ROLES');
+      let availableRoles = availableJson ? JSON.parse(availableJson) : [];
+
+      // 3. 【關鍵修正】如果牌堆空了，檢查是否有「幽靈人口」(領了牌但沒填資料)
+      if (!availableRoles || availableRoles.length === 0) {
+          // 讀取目前 Excel 裡已經「正式註冊」的動物
+          const data = sheet.getDataRange().getValues();
+          const registeredAnimals = [];
+          // 從第2列開始讀 (跳過標題)
+          for (let i = 1; i < data.length; i++) {
+            if (data[i][0]) registeredAnimals.push(data[i][0]);
+          }
+
+          // 找出哪些動物還沒在 Excel 裡
+          const missingAnimals = ANIMALS.filter(a => !registeredAnimals.includes(a));
+
+          if (missingAnimals.length > 0) {
+             // 發現有動物被浪費了！回收第一隻給現在這個人
+             // (這裡我們隨機選一隻或拿第一隻都可以)
+             const recycledRole = missingAnimals[0];
+             
+             // 強制指派給新使用者
+             roleMap[uuid] = recycledRole;
+             scriptProperties.setProperty('ROLE_MAP', JSON.stringify(roleMap));
+             
+             return ContentService.createTextOutput(JSON.stringify({ status: 'success', role: recycledRole }));
+          } else {
+             // 真的滿了 (Excel 裡有 5 筆資料)
+             return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: '角色已全數抽完且額滿！' }));
+          }
+      }
+
+      // 4. 正常抽牌流程 (牌堆還有牌)
+      const newRole = availableRoles.pop();
+      roleMap[uuid] = newRole;
+
+      scriptProperties.setProperty('AVAILABLE_ROLES', JSON.stringify(availableRoles));
+      scriptProperties.setProperty('ROLE_MAP', JSON.stringify(roleMap));
+
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', role: newRole }));
+    }
+
+    // --- 其他動作 ---
+    const nickname = params.nickname;
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === nickname) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    // 若無此動物資料列，則新增
+    if (rowIndex === -1 && nickname) {
+      sheet.appendRow([nickname, '', '', new Date(), '']);
+      rowIndex = sheet.getLastRow();
+    }
+
+    if (action === 'submit_feature') {
+      sheet.getRange(rowIndex, 2).setValue(params.feature1);
+      sheet.getRange(rowIndex, 3).setValue(params.feature2);
+      sheet.getRange(rowIndex, 4).setValue(new Date());
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' }));
+    }
     
-    <style>
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .hidden { display: none !important; }
-        .snow-bg {
-            background-color: #0f172a;
-            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
-        }
-        @keyframes bounce-slow {
-            0%, 100% { transform: translateY(-5%); }
-            50% { transform: translateY(5%); }
-        }
-        .animate-bounce-slow {
-            animation: bounce-slow 2s infinite;
-        }
-    </style>
-</head>
-<body class="snow-bg min-h-screen text-slate-100 pb-20 relative">
-
-    <!-- 音效區 -->
-    <audio id="sfx-drum" src="https://cdn.pixabay.com/audio/2024/09/13/audio_1492209736.mp3?v=fix3" preload="auto"></audio>
-    <audio id="sfx-spin" src="https://cdn.pixabay.com/audio/2022/03/10/audio_c3e660e807.mp3?v=fix3" preload="auto"></audio>
-    <audio id="sfx-tada" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3?v=fix3" preload="auto"></audio>
-    <audio id="sfx-magic" src="https://cdn.pixabay.com/audio/2022/03/19/audio_97af9b0496.mp3?v=fix3" preload="auto"></audio>
-    <audio id="sfx-click" src="https://cdn.pixabay.com/audio/2022/03/15/audio_736881c621.mp3?v=fix3" preload="auto"></audio>
-
-    <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
-
-    <header class="text-center py-8 px-4 mt-4">
-        <h1 class="text-4xl font-bold text-red-500 drop-shadow-md mb-2">🎅 2025聖誕神秘交換禮物</h1>
-        <p class="text-slate-400 text-sm">抽取角色 · 匿名許願 · 命運配對</p>
-    </header>
-
-    <main class="max-w-md mx-auto px-4 relative">
-        <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
-            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mb-4"></div>
-            <p class="text-white font-bold" id="loadingText">處理中...</p>
-        </div>
-
-        <!-- 0. 抽取角色區 -->
-        <div id="drawRoleSection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-purple-600 mb-8 relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-full bg-purple-50 opacity-50 pointer-events-none"></div>
-            <h2 class="text-2xl font-bold mb-4 text-center text-purple-900 relative z-10">🎭 你的神秘身分是？</h2>
-            <div class="text-center py-4 relative z-10">
-                <div class="text-6xl mb-6 animate-bounce-slow">❓</div>
-                <p class="text-gray-500 mb-6 text-sm">點擊按鈕，從命運牌堆中<br>抽取一張專屬於你的動物卡牌。</p>
-                <button id="btnDrawRole" onclick="drawRole()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg text-lg transform transition hover:scale-105 active:scale-95">
-                    🎴 抽取我的角色
-                </button>
-            </div>
-        </div>
-
-        <!-- 0.5 角色揭曉動畫區 -->
-        <div id="roleRevealSection" class="hidden fixed inset-0 z-40 bg-slate-900 flex flex-col items-center justify-center text-center px-4">
-            <h2 id="revealTitle" class="text-white text-2xl font-bold mb-4 animate-pulse">🎲 命運安排中...</h2>
-            <div id="revealCard" class="bg-white text-slate-900 p-8 rounded-2xl shadow-2xl transform transition-all duration-500 w-64 h-80 flex flex-col items-center justify-center border-4 border-purple-400">
-                <div id="cardContent"><div class="text-6xl mb-4 animate-spin">🃏</div></div>
-            </div>
-            <button onclick="confirmRole()" class="mt-10 bg-yellow-500 hover:bg-yellow-600 text-white px-10 py-3 rounded-full font-bold shadow-lg hidden animate-bounce" id="enterGameBtn">
-                進入遊戲 ➜
-            </button>
-        </div>
-
-        <!-- 1.5 真實姓名填寫 -->
-        <div id="profileSection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-blue-600 mb-8">
-            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
-                身分：<span class="userBadgeText"></span>
-            </div>
-            <h2 class="text-xl font-bold mb-2 text-center text-blue-800 mt-4">📛 填寫真實姓名</h2>
-            <p class="text-sm text-gray-500 text-center mb-4">讓抽到你的人知道是誰！</p>
-            <div class="space-y-3">
-                <input type="text" id="inputName" placeholder="請輸入你的真實姓名" class="w-full p-4 border-2 border-blue-200 rounded-xl text-lg text-center font-bold">
-                <button id="btnSubmitProfile" onclick="submitProfile()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg">確認儲存 & 下一步</button>
-            </div>
-        </div>
-
-        <!-- 2. 抽籤區 -->
-        <div id="lotterySection" class="hidden bg-white text-slate-800 rounded-xl p-6 shadow-xl border-4 border-yellow-500 mb-8 relative">
-            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
-                身分：<span class="userBadgeText"></span>
-            </div>
-            <h2 class="text-xl font-bold mb-2 text-center text-yellow-800 mt-4">✨ 抽取禮物特徵 ✨</h2>
-            <div id="lotteryIntro">
-                <p class="text-sm text-center text-gray-500 mb-6">系統將從資料庫隨機抽出 3 個特徵。</p>
-                <button onclick="startDrawAnimation()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 rounded-xl shadow-lg text-lg">🎰 啟動拉霸機</button>
-            </div>
-            <div id="cardsContainer" class="grid grid-cols-1 gap-3 hidden mt-4"></div>
-            <button id="submitBtn" onclick="submitFeatures()" class="hidden w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-lg disabled:bg-gray-400">🎁 確認並送出願望</button>
-        </div>
-
-        <!-- 3. 已提交狀態 -->
-        <div id="submittedState" class="hidden bg-green-100 text-green-900 rounded-xl p-6 shadow-lg border-2 border-green-500 mb-8 text-center relative">
-            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-sm whitespace-nowrap">
-                身分：<span class="userBadgeText"></span>
-            </div>
-            <h3 class="text-2xl font-bold mb-2 mt-4">🎄 願望已掛上樹梢！</h3>
-            <p id="mySubmittedFeatures" class="font-bold text-lg text-red-600 my-3"></p>
-            <p class="text-sm text-gray-600">真實姓名：<span id="mySubmittedName" class="font-bold"></span></p>
-        </div>
-
-        <!-- 4. 許願牆 -->
-        <div id="wallSection" class="hidden bg-slate-800 bg-opacity-90 backdrop-blur rounded-xl p-5 shadow-xl border border-slate-600 mb-8">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-yellow-400">📋 許願進度 (<span id="progressCount">0</span>/5)</h2>
-                <div class="animate-pulse h-2 w-2 bg-green-500 rounded-full"></div>
-            </div>
-            <div id="wallGrid" class="space-y-3"></div>
-        </div>
-
-        <!-- 5. 配對區 -->
-        <div id="pairingSection" class="bg-red-900 bg-opacity-90 backdrop-blur rounded-xl p-6 shadow-2xl border-2 border-red-500 text-center">
-            <h2 class="text-2xl font-bold text-white mb-4">🔗 最終配對</h2>
-            
-            <div id="pairingWaiting" class="py-4">
-                <p class="text-red-200 mb-2">等待所有人提交特徵後開啟...</p>
-                <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden"><div id="progressBar" class="bg-yellow-400 h-full w-0 transition-all duration-1000"></div></div>
-            </div>
-            
-            <div id="pairingAction" class="hidden py-4">
-                <p class="text-yellow-300 font-bold mb-4 text-lg animate-bounce">所有人都準備好了！</p>
-                <button onclick="startPairingProcess()" class="w-full bg-gradient-to-r from-yellow-500 to-red-600 text-white font-bold py-4 rounded-xl shadow-xl text-xl hover:scale-105 transition transform">
-                    🚀 啟動配對輪盤
-                </button>
-            </div>
-            
-            <div id="pairingResult" class="hidden space-y-3 text-left mt-4"></div>
-        </div>
-
-        <!-- 6. 配對中全螢幕動畫 -->
-        <div id="pairingOverlay" class="hidden fixed inset-0 z-50 bg-black bg-opacity-90 flex flex-col items-center justify-center">
-            <div class="text-6xl mb-6 animate-spin">🎡</div>
-            <h2 class="text-yellow-400 text-3xl font-bold mb-4 animate-pulse">聖誕老人配對中...</h2>
-            <div id="pairingShuffleText" class="text-white text-xl font-bold">企鵝 ➜ ❓</div>
-        </div>
-
-    </main>
-
-    <script>
-        // ⚠️ 你的 GAS 網址
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzq9VELc16iIDjvOvOPkcrvvBI6Wvz53KrnHIZJL5F-ivV6cvSP-C_PH8umKnaGcNBB5A/exec';
-
-        const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
-        
-        // 更新後的特徵資料庫
-        const FEATURE_DB = {
-            shapes: ["長條狀的", "圓圓的", "方形的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "澎澎的", "巨大的", "迷你的", "愛心圖案的"],
-            colors: ["紅色的", "透明的", "黑色的", "綠色的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
-            functions: ["可以吃的", "可以喝的", "手持式的", "可穿戴的", "可玩耍的", "會動的", "可以充電的", "舒壓的", "可以用來裝飾的", "與音樂有關的", "讓生活變方便的", "辦公室可用的", "可以放床上的", "接觸肌膚的", "與食物有關的", "具收納功能的", "具清潔功能的", "與交通有關的", "與睡眠有關的", "感覺很養生的", "跟3C有關的"],
-            states: ["香香的", "冰冷的", "亮亮的", "會發出聲音的", "毛茸茸的", "鹹鹹的", "甜甜的", "辣辣的", "熱熱的", "防水的", "磁吸的", "軟軟的", "硬邦邦的", "很有重量的", "易碎的", "簡約風格的", "在家會用到的", "液體狀的", "可愛的", "像阿mu一樣胖胖的"]
-        };
-
-        let clientUUID = localStorage.getItem('clientUUID');
-        if (!clientUUID) {
-            clientUUID = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('clientUUID', clientUUID);
-        }
-
-        let currentUser = localStorage.getItem('animalUser'); 
-        let myFeatures = [];
-        let finalSelection = [];
-        let isDrawing = false;
-        let globalProfiles = {}; 
-
-        const sounds = {
-            drum: document.getElementById('sfx-drum'),
-            spin: document.getElementById('sfx-spin'),
-            tada: document.getElementById('sfx-tada'),
-            magic: document.getElementById('sfx-magic'),
-            click: document.getElementById('sfx-click')
-        };
-
-        function playSfx(name) {
-            const audio = sounds[name];
-            if(audio) {
-                audio.volume = (name === 'magic' || name === 'drum') ? 0.3 : 0.6;
-                audio.currentTime = 0;
-                audio.play().catch(e => console.log('Audio error:', e));
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!currentUser) {
-                showSection('drawRoleSection');
-                document.getElementById('wallSection').classList.add('hidden');
-            }
-            fetchData(); 
-            setInterval(fetchData, 3000); 
-        });
-
-        // --- 核心更新 ---
-        function updateUIState(data) {
-            document.getElementById('progressCount').innerText = data.submissionCount;
-            // 進度條控制
-            const pct = Math.min((data.submissionCount/5)*100, 100);
-            document.getElementById('progressBar').style.width = `${pct}%`;
-
-            if (currentUser && !data.myRole) {
-                console.log('Server reset detected.');
-                localStorage.removeItem('animalUser');
-                currentUser = null;
-                showSection('drawRoleSection');
-                document.getElementById('wallSection').classList.add('hidden');
-                return;
-            }
-
-            if (!currentUser && data.myRole) {
-                currentUser = data.myRole;
-                localStorage.setItem('animalUser', currentUser);
-            }
-
-            globalProfiles = data.profiles || {};
-
-            if (!currentUser) {
-                showSection('drawRoleSection');
-                document.getElementById('wallSection').classList.add('hidden'); 
-                return;
-            }
-
-            document.getElementById('wallSection').classList.remove('hidden'); 
-            document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
-
-            const mySubmission = data.submissions[currentUser];
-            const myProfile = data.profiles[currentUser];
-
-            const currentVisible = document.querySelector('main > div:not(.hidden):not(#loading):not(#roleRevealSection):not(#wallSection):not(#pairingSection)');
-            const currentId = currentVisible ? currentVisible.id : '';
-
-            // 避免打斷配對動畫
-            if (!document.getElementById('pairingOverlay').classList.contains('hidden')) return;
-
-            if (mySubmission && currentId !== 'submittedState') {
-                document.getElementById('mySubmittedFeatures').innerText = `${mySubmission[0]} ＋ ${mySubmission[1]}`;
-                document.getElementById('mySubmittedName').innerText = myProfile ? myProfile.name : "(資料同步中)";
-                showSection('submittedState');
-            } 
-            else if (myProfile && !mySubmission && currentId !== 'lotterySection') {
-                showSection('lotterySection');
-            } 
-            else if (!myProfile && currentId !== 'profileSection' && currentId !== 'drawRoleSection') {
-                showSection('profileSection');
-            }
-
-            const pWaiting = document.getElementById('pairingWaiting');
-            const pAction = document.getElementById('pairingAction');
-            const pResult = document.getElementById('pairingResult');
-
-            if (data.isPaired) {
-                pWaiting.classList.add('hidden');
-                pAction.classList.add('hidden');
-                
-                if (pResult.classList.contains('hidden')) {
-                    playSfx('tada');
-                    confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-                    pResult.classList.remove('hidden');
-                    renderPairingResult(data.pairings); 
-                }
-            } else if (data.submissionCount >= 5) {
-                pWaiting.classList.add('hidden');
-                pAction.classList.remove('hidden');
-                pResult.classList.add('hidden');
-            } else {
-                pWaiting.classList.remove('hidden');
-                pAction.classList.add('hidden');
-                pResult.classList.add('hidden');
-            }
-        }
-
-        // --- 抽取角色 ---
-        function drawRole() {
-            playSfx('click');
-            const btn = document.getElementById('btnDrawRole');
-            btn.disabled = true;
-            btn.innerText = "🎴 正在抽出...";
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const revealSec = document.getElementById('roleRevealSection');
-            revealSec.classList.remove('hidden');
-            playSfx('drum'); 
-
-            fetch(API_URL, {
-                redirect: "follow", method: 'POST',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'draw_role', uuid: clientUUID })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success' && data.role) {
-                    currentUser = data.role;
-                    localStorage.setItem('animalUser', currentUser);
-                    showRoleRevealResult(currentUser);
-                } else {
-                    alert('抽取失敗: ' + (data.message || '未知錯誤'));
-                    btn.disabled = false;
-                    btn.innerText = "🎴 抽取我的角色";
-                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    revealSec.classList.add('hidden');
-                }
-            })
-            .catch(err => {
-                alert('連線錯誤');
-                revealSec.classList.add('hidden');
-                btn.disabled = false;
-                btn.innerText = "🎴 抽取我的角色";
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            });
-        }
-
-        function showRoleRevealResult(role) {
-            const zhName = ANIMAL_NAMES[role];
-            const cardContent = document.getElementById('cardContent');
-            const revealCard = document.getElementById('revealCard');
-            const revealTitle = document.getElementById('revealTitle');
-
-            setTimeout(() => {
-                const drum = document.getElementById('sfx-drum');
-                if(drum) { drum.pause(); drum.currentTime = 0; }
-                playSfx('tada');
-                
-                confetti({ particleCount: 150, spread: 80, origin: { y: 0.5 } });
-                
-                revealCard.classList.remove('border-purple-400');
-                revealCard.classList.add('border-yellow-400', 'scale-110'); 
-                
-                revealTitle.innerText = "🎉 角色分配完成！";
-                revealTitle.classList.remove('animate-pulse');
-
-                cardContent.innerHTML = `
-                    <div class="text-6xl mb-4 animate-bounce">${zhName.split(' ')[1]}</div>
-                    <div class="text-3xl font-bold text-indigo-600">${zhName.split(' ')[0]}</div>
-                `;
-                document.getElementById('enterGameBtn').classList.remove('hidden');
-            }, 2000); 
-        }
-
-        function confirmRole() {
-            playSfx('click');
-            document.getElementById('roleRevealSection').classList.add('hidden');
-            document.querySelectorAll('.userBadgeText').forEach(el => el.innerText = ANIMAL_NAMES[currentUser]);
-            showSection('profileSection'); 
-            fetchData();
-        }
-
-        function startPairingProcess() {
-            if(!confirm("確定要進行最終配對嗎？")) return;
-            
-            playSfx('magic'); 
-            
-            const overlay = document.getElementById('pairingOverlay');
-            overlay.classList.remove('hidden');
-            
-            const shuffleText = document.getElementById('pairingShuffleText');
-            const animalKeys = Object.keys(ANIMAL_NAMES);
-            let shuffleInterval = setInterval(() => {
-                const randomA = animalKeys[Math.floor(Math.random() * animalKeys.length)];
-                const randomB = animalKeys[Math.floor(Math.random() * animalKeys.length)];
-                shuffleText.innerText = `${ANIMAL_NAMES[randomA]} ➜ ${ANIMAL_NAMES[randomB]}`;
-            }, 100);
-
-            fetch(API_URL, { 
-                redirect: "follow", method: 'POST', 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'generate_pair' }) 
-            })
-            .then(res => res.json())
-            .then(data => {
-                setTimeout(() => {
-                    clearInterval(shuffleInterval);
-                    overlay.classList.add('hidden');
-                    
-                    if(data.status === 'success' || data.status === 'already_paired') {
-                        fetchData(); 
-                    } else {
-                        alert('配對失敗：' + data.message);
-                    }
-                }, 3000); 
-            })
-            .catch(err => {
-                clearInterval(shuffleInterval);
-                overlay.classList.add('hidden');
-                alert("連線錯誤");
-            });
-        }
-
-        function showSection(sectionId) {
-            const sections = ['drawRoleSection', 'profileSection', 'lotterySection', 'submittedState'];
-            sections.forEach(id => {
-                const el = document.getElementById(id);
-                if (id === sectionId) el.classList.remove('hidden');
-                else el.classList.add('hidden');
-            });
-        }
-
-        function logout() {
-            const pwd = prompt("【開發者模式】\n請輸入密碼來重置身分：");
-            if (pwd === "mumu") {
-                localStorage.clear();
-                const devRole = prompt("密碼正確！\n指定角色代號 (Penguin, Alpaca...)\n(留空則完全重置)");
-                if (devRole) {
-                    const formattedRole = devRole.charAt(0).toUpperCase() + devRole.slice(1).toLowerCase();
-                    const validRoles = ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'];
-                    if (validRoles.includes(formattedRole)) {
-                        localStorage.setItem('animalUser', formattedRole);
-                        localStorage.setItem('clientUUID', 'dev_test_' + Math.floor(Math.random() * 10000));
-                        alert(`已切換為測試身分：${formattedRole}`);
-                    } else {
-                        alert("角色代號錯誤，將執行普通重置。");
-                    }
-                }
-                location.reload();
-            } else if (pwd !== null) {
-                alert("密碼錯誤！");
-            }
-        }
-
-        function submitProfile() {
-            playSfx('click');
-            const name = document.getElementById('inputName').value;
-            if(!name) return alert('請填寫真實姓名！');
-
-            const btn = document.getElementById('btnSubmitProfile');
-            const originalText = btn.innerText;
-            btn.innerText = "資料儲存中...";
-            btn.disabled = true;
-            btn.classList.add('opacity-50');
-
-            fetch(API_URL, {
-                redirect: "follow", method: 'POST',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'submit_profile', nickname: currentUser, realName: name })
-            })
-            .then(res => res.json())
-            .then(data => {
-                playSfx('tada');
-                showSection('lotterySection');
-                btn.innerText = originalText;
-                btn.disabled = false;
-                btn.classList.remove('opacity-50');
-            });
-        }
-
-        function submitFeatures() {
-            playSfx('click');
-            document.getElementById('loading').classList.remove('hidden');
-            
-            fetch(API_URL, {
-                redirect: "follow", method: 'POST',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: 'submit_feature', nickname: currentUser, feature1: finalSelection[0], feature2: finalSelection[1] })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('loading').classList.add('hidden');
-                playSfx('tada');
-                alert('許願成功！祝你聖誕快樂！');
-                fetchData();
-            });
-        }
-
-        function fetchData() {
-            const url = `${API_URL}?uuid=${clientUUID}`;
-            fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('loading').classList.add('hidden');
-                renderWall(data.submissions, data.isPaired);
-                updateUIState(data);
-            })
-            .catch(err => console.error(err));
-        }
-
-        function renderWall(submissions, isPaired) {
-            const grid = document.getElementById('wallGrid');
-            grid.innerHTML = '';
-
-            if (!isPaired) {
-                grid.innerHTML = `
-                    <div class="col-span-1 text-center py-8 bg-slate-700/50 rounded-xl border border-slate-600 border-dashed text-slate-400">
-                        <div class="text-4xl mb-2 animate-bounce-slow">🤫</div>
-                        <p class="text-yellow-400 font-bold text-lg">許願名單保密中</p>
-                        <p class="text-xs mt-2 opacity-70">等待所有人完成並配對後<br>才會揭曉是誰許了什麼願望喔！</p>
-                    </div>
-                `;
-                return;
-            }
-
-            ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'].forEach(engName => {
-                const zhName = ANIMAL_NAMES[engName];
-                const row = document.createElement('div');
-                row.className = "bg-slate-700 bg-opacity-50 rounded p-3 flex items-center justify-between border border-slate-600";
-                
-                const nameDiv = document.createElement('div');
-                nameDiv.innerHTML = `<span class="${engName === currentUser ? 'text-yellow-400 font-bold' : 'text-slate-200'}">${zhName}</span>`;
-                const contentDiv = document.createElement('div');
-                contentDiv.className = "flex gap-2";
-
-                if (submissions[engName]) {
-                    contentDiv.innerHTML = `
-                        <span class="bg-red-600 text-white text-xs px-2 py-1 rounded shadow">${submissions[engName][0]}</span>
-                        <span class="bg-green-600 text-white text-xs px-2 py-1 rounded shadow">${submissions[engName][1]}</span>
-                    `;
-                } else {
-                    contentDiv.innerHTML = `<span class="text-slate-500 text-xs animate-pulse">思考中...</span>`;
-                }
-                row.appendChild(nameDiv);
-                row.appendChild(contentDiv);
-                grid.appendChild(row);
-            });
-        }
-
-        function renderPairingResult(pairings) {
-            const container = document.getElementById('pairingResult');
-            container.innerHTML = '';
-
-            pairings.forEach((pair, index) => {
-                const isMyMission = (pair.from === currentUser);
-                const div = document.createElement('div');
-                div.className = `p-3 rounded border flex flex-col ${isMyMission ? 'bg-yellow-900 bg-opacity-60 border-yellow-500 transform scale-105 shadow-xl' : 'bg-black bg-opacity-40 border-slate-700 opacity-70'}`;
-                
-                const basicInfo = `
-                    <div class="flex items-center justify-between w-full">
-                        <div class="font-bold text-slate-300 w-5/12 text-right ${pair.from===currentUser?'text-yellow-300':''}">${ANIMAL_NAMES[pair.from]}</div>
-                        <div class="w-2/12 text-center text-red-500 text-xl">➜</div>
-                        <div class="font-bold text-slate-300 w-5/12 text-left ${pair.to===currentUser?'text-yellow-300':''}">${ANIMAL_NAMES[pair.to]}</div>
-                    </div>
-                `;
-                div.innerHTML = basicInfo;
-
-                if (isMyMission) {
-                    const targetProfile = globalProfiles[pair.to];
-                    const detailsDiv = document.createElement('div');
-                    detailsDiv.className = "mt-3 pt-3 border-t border-yellow-500/30 text-left text-sm text-yellow-100";
-                    if(targetProfile && targetProfile.name) {
-                        detailsDiv.innerHTML = `
-                            <p class="font-bold text-yellow-400 mb-1">🎁 收禮人身分揭曉：</p>
-                            <p class="text-xl text-white font-bold">${targetProfile.name}</p>
-                        `;
-                    } else {
-                        detailsDiv.innerHTML = `<p class="text-red-400">⚠️ 對方尚未填寫姓名</p>`;
-                    }
-                    div.appendChild(detailsDiv);
-                }
-
-                div.style.animation = `fadeIn 0.5s forwards ${index * 0.2}s`;
-                container.appendChild(div);
-            });
-        }
-
-        function startDrawAnimation() {
-            if (isDrawing) return;
-            isDrawing = true;
-            document.getElementById('lotteryIntro').classList.add('hidden');
-            document.getElementById('cardsContainer').classList.remove('hidden');
-            playSfx('spin');
-
-            const allFeaturesForAnim = [...FEATURE_DB.shapes, ...FEATURE_DB.colors, ...FEATURE_DB.functions, ...FEATURE_DB.states];
-            const categories = Object.keys(FEATURE_DB);
-            const selectedCategories = categories.sort(() => 0.5 - Math.random()).slice(0, 3);
-            const finalDraw = selectedCategories.map(cat => {
-                const list = FEATURE_DB[cat];
-                return list[Math.floor(Math.random() * list.length)];
-            });
-
-            myFeatures = finalDraw;
-            finalSelection = [...finalDraw];
-
-            const container = document.getElementById('cardsContainer');
-            container.innerHTML = '';
-            for(let i=0; i<3; i++) {
-                const card = document.createElement('div');
-                card.id = `slot-${i}`;
-                card.className = "bg-gray-100 p-4 rounded-lg border-2 border-gray-300 text-center font-bold text-gray-400 text-xl";
-                card.innerText = "???";
-                container.appendChild(card);
-            }
-
-            let steps = 0;
-            const interval = setInterval(() => {
-                steps++;
-                for(let i=0; i<3; i++) {
-                    document.getElementById(`slot-${i}`).innerText = allFeaturesForAnim[Math.floor(Math.random() * allFeaturesForAnim.length)];
-                }
-                if (steps >= 20) {
-                    clearInterval(interval);
-                    revealFinalCards();
-                }
-            }, 100);
-        }
-
-        function revealFinalCards() {
-            playSfx('tada');
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-            renderCards();
-            document.getElementById('submitBtn').classList.remove('hidden');
-            const tip = document.createElement('p');
-            tip.className = "text-center text-red-600 font-bold mt-2 animate-bounce";
-            tip.innerText = "👇 請點擊「刪除」去掉 1 個特徵";
-            document.getElementById('cardsContainer').prepend(tip);
-        }
-
-        function renderCards() {
-            const container = document.getElementById('cardsContainer');
-            const tip = container.querySelector('p');
-            container.innerHTML = '';
-            if(tip) container.appendChild(tip);
-
-            myFeatures.forEach((feature) => {
-                const isDeleted = !finalSelection.includes(feature);
-                const card = document.createElement('div');
-                card.className = `p-4 rounded-lg border-2 flex justify-between items-center transition duration-300 ${isDeleted ? 'bg-gray-200 border-gray-300 opacity-60' : 'bg-red-50 border-red-300 scale-100'}`;
-                
-                const text = document.createElement('span');
-                text.className = `font-bold text-lg ${isDeleted ? 'line-through text-gray-500' : 'text-red-700'}`;
-                text.innerText = feature;
-
-                const btn = document.createElement('button');
-                btn.className = `text-sm px-3 py-1 rounded transition ${isDeleted ? 'bg-gray-500 text-white' : 'bg-red-500 text-white hover:bg-red-600 shadow'}`;
-                btn.innerText = isDeleted ? "復原" : "刪除 🗑️";
-                btn.onclick = () => toggleFeature(feature);
-                card.appendChild(text);
-                card.appendChild(btn);
-                container.appendChild(card);
-            });
-            updateSubmitBtn();
-        }
-
-        function toggleFeature(feature) {
-            playSfx('click');
-            if (finalSelection.includes(feature)) {
-                if (finalSelection.length <= 2) finalSelection = finalSelection.filter(f => f !== feature);
-                else finalSelection = finalSelection.filter(f => f !== feature);
-            } else {
-                if (finalSelection.length < 3) finalSelection.push(feature);
-            }
-            renderCards();
-        }
-
-        function updateSubmitBtn() {
-            const btn = document.getElementById('submitBtn');
-            if (finalSelection.length === 2) {
-                btn.disabled = false;
-                btn.className = "w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-lg transform transition hover:scale-105";
-            } else {
-                btn.disabled = true;
-                btn.className = "w-full mt-6 bg-gray-400 text-white font-bold py-3 rounded-lg cursor-not-allowed";
-            }
-        }
-    </script>
-</body>
-</html>
+    else if (action === 'submit_profile') {
+      sheet.getRange(rowIndex, 5).setValue(params.realName);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' }));
+    }
+    
+    else if (action === 'generate_pair') {
+      let currentPairing = scriptProperties.getProperty('PAIRING_DATA');
+      if (currentPairing) {
+         return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Already paired' }));
+      }
+      
+      // 嚴格檢查 Excel 裡是否有 5 筆完整資料
+      const rows = sheet.getDataRange().getValues();
+      rows.shift();
+      const realCount = rows.filter(r => r[0] && r[1] && r[2]).length;
+      
+      if (realCount < 5) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: '人數不足 5 人，請確認大家是否都已送出願望' }));
+      }
+ 
+      const shuffled = [...ANIMALS].sort(() => 0.5 - Math.random());
+      const pairing = [];
+      for (let i = 0; i < shuffled.length; i++) {
+        pairing.push({ from: shuffled[i], to: shuffled[(i + 1) % shuffled.length] });
+      }
+      scriptProperties.setProperty('PAIRING_DATA', JSON.stringify(pairing));
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: pairing }));
+    }
+ 
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }));
+  } finally {
+    lock.releaseLock();
+  }
+}
