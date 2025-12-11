@@ -28,11 +28,11 @@
 <body class="snow-bg min-h-screen text-slate-100 pb-20 relative">
 
     <!-- 音效區 -->
-    <audio id="sfx-drum" src="https://cdn.pixabay.com/audio/2024/09/13/audio_1492209736.mp3?v=fix2" preload="auto"></audio>
-    <audio id="sfx-spin" src="https://cdn.pixabay.com/audio/2022/03/10/audio_c3e660e807.mp3?v=fix2" preload="auto"></audio>
-    <audio id="sfx-tada" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3?v=fix2" preload="auto"></audio>
-    <audio id="sfx-magic" src="https://cdn.pixabay.com/audio/2022/03/19/audio_97af9b0496.mp3?v=fix2" preload="auto"></audio>
-    <audio id="sfx-click" src="https://cdn.pixabay.com/audio/2022/03/15/audio_736881c621.mp3?v=fix2" preload="auto"></audio>
+    <audio id="sfx-drum" src="https://cdn.pixabay.com/audio/2024/09/13/audio_1492209736.mp3?v=fix3" preload="auto"></audio>
+    <audio id="sfx-spin" src="https://cdn.pixabay.com/audio/2022/03/10/audio_c3e660e807.mp3?v=fix3" preload="auto"></audio>
+    <audio id="sfx-tada" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3?v=fix3" preload="auto"></audio>
+    <audio id="sfx-magic" src="https://cdn.pixabay.com/audio/2022/03/19/audio_97af9b0496.mp3?v=fix3" preload="auto"></audio>
+    <audio id="sfx-click" src="https://cdn.pixabay.com/audio/2022/03/15/audio_736881c621.mp3?v=fix3" preload="auto"></audio>
 
     <button onclick="logout()" class="absolute top-4 left-4 text-xs text-slate-500 hover:text-white border border-slate-600 px-2 py-1 rounded z-50">🔒 重置身分</button>
 
@@ -108,7 +108,7 @@
             <p class="text-sm text-gray-600">真實姓名：<span id="mySubmittedName" class="font-bold"></span></p>
         </div>
 
-        <!-- 4. 許願牆 (預設隱藏，登入後顯示，但未配對前顯示保密狀態) -->
+        <!-- 4. 許願牆 -->
         <div id="wallSection" class="hidden bg-slate-800 bg-opacity-90 backdrop-blur rounded-xl p-5 shadow-xl border border-slate-600 mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-yellow-400">📋 許願進度 (<span id="progressCount">0</span>/5)</h2>
@@ -151,6 +151,7 @@
 
         const ANIMAL_NAMES = { 'Penguin': '企鵝 🐧', 'Alpaca': '羊駝 🦙', 'Sloth': '樹懶 🦥', 'Owl': '貓頭鷹 🦉', 'Sea Otter': '海獺 🦦' };
         
+        // 更新後的特徵資料庫
         const FEATURE_DB = {
             shapes: ["長條狀的", "圓圓的", "方形的", "三角形的", "星星圖案的", "動物造型的", "扁平的", "澎澎的", "巨大的", "迷你的", "愛心圖案的"],
             colors: ["紅色的", "透明的", "黑色的", "綠色的", "淺色的", "木頭色的", "粉嫩色系的",  "純白色的", "五顏六色的"],
@@ -196,8 +197,10 @@
             setInterval(fetchData, 3000); 
         });
 
+        // --- 核心更新 ---
         function updateUIState(data) {
             document.getElementById('progressCount').innerText = data.submissionCount;
+            // 進度條控制
             const pct = Math.min((data.submissionCount/5)*100, 100);
             document.getElementById('progressBar').style.width = `${pct}%`;
 
@@ -232,6 +235,7 @@
             const currentVisible = document.querySelector('main > div:not(.hidden):not(#loading):not(#roleRevealSection):not(#wallSection):not(#pairingSection)');
             const currentId = currentVisible ? currentVisible.id : '';
 
+            // 避免打斷配對動畫
             if (!document.getElementById('pairingOverlay').classList.contains('hidden')) return;
 
             if (mySubmission && currentId !== 'submittedState') {
@@ -271,6 +275,7 @@
             }
         }
 
+        // --- 抽取角色 ---
         function drawRole() {
             playSfx('click');
             const btn = document.getElementById('btnDrawRole');
@@ -467,19 +472,16 @@
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loading').classList.add('hidden');
-                // 傳入 isPaired 參數來決定是否隱藏許願牆內容
                 renderWall(data.submissions, data.isPaired);
                 updateUIState(data);
             })
             .catch(err => console.error(err));
         }
 
-        // 修改後的 renderWall：根據 isPaired 決定顯示內容
         function renderWall(submissions, isPaired) {
             const grid = document.getElementById('wallGrid');
             grid.innerHTML = '';
 
-            // CASE 1: 還沒配對 -> 顯示保密狀態
             if (!isPaired) {
                 grid.innerHTML = `
                     <div class="col-span-1 text-center py-8 bg-slate-700/50 rounded-xl border border-slate-600 border-dashed text-slate-400">
@@ -491,7 +493,6 @@
                 return;
             }
 
-            // CASE 2: 已配對 -> 顯示完整名單
             ['Penguin', 'Alpaca', 'Sloth', 'Owl', 'Sea Otter'].forEach(engName => {
                 const zhName = ANIMAL_NAMES[engName];
                 const row = document.createElement('div');
